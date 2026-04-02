@@ -24,44 +24,19 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Expõe tudo globalmente
 window._auth = auth;
 window._db = db;
-window._fns = {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  doc, setDoc, getDoc,
-  collection, addDoc, query, orderBy,
-  onSnapshot, serverTimestamp, updateDoc, getDocs, where
-};
-
-// Mantém compatibilidade com código antigo
-window._fb = {
-  auth, db,
-  ...window._fns
-};
-
+window._fns = { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, getDocs, where };
+window._fb = { auth, db, ...window._fns };
 window._fbReady = true;
+window.ADMIN_EMAIL = 'geziel_gomes@icloud.com';
 
-// Listener de auth — dispara sempre
 onAuthStateChanged(auth, async (user) => {
-  console.log('[Auth] state changed:', user ? user.email : 'null');
   if (user) {
     try {
       const snap = await getDoc(doc(db, 'users', user.uid));
-      if (snap.exists()) {
-        window._currentUser = { uid: user.uid, ...snap.data() };
-        console.log('[Auth] user loaded from Firestore:', window._currentUser.role);
-      } else {
-        console.warn('[Auth] user exists in Auth but not in Firestore');
-        window._currentUser = null;
-      }
-    } catch(e) {
-      console.error('[Auth] Firestore error:', e);
-      window._currentUser = null;
-    }
+      window._currentUser = snap.exists() ? { uid: user.uid, ...snap.data() } : null;
+    } catch(e) { window._currentUser = null; }
   } else {
     window._currentUser = null;
   }
@@ -79,6 +54,7 @@ onAuthStateChanged(auth, async (user) => {
     --green:#52b788; --green-dim:rgba(82,183,136,0.10);
     --red:#e05252; --red-dim:rgba(224,82,82,0.10);
     --blue:#5a8fe0; --blue-dim:rgba(90,143,224,0.10);
+    --orange:#e09652; --orange-dim:rgba(224,150,82,0.10);
     --radius:14px; --radius-sm:9px;
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -94,6 +70,7 @@ onAuthStateChanged(auth, async (user) => {
   .screen{display:none;width:100vw;height:100vh;}
   .screen.active{display:flex;}
 
+  /* ── AUTH ── */
   #screen-auth{align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(200,164,90,0.07) 0%,transparent 70%);}
   .auth-card{width:400px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:36px 32px;}
   .auth-logo{font-family:'DM Serif Display',serif;font-size:28px;letter-spacing:0.18em;color:var(--gold);text-align:center;margin-bottom:6px;}
@@ -119,6 +96,21 @@ onAuthStateChanged(auth, async (user) => {
   .auth-error{background:var(--red-dim);border:1px solid rgba(224,82,82,0.2);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;display:none;}
   .auth-error.show{display:block;}
 
+  /* ── PENDING SCREEN ── */
+  #screen-pending{align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(200,164,90,0.07) 0%,transparent 70%);}
+  .pending-card{width:420px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:40px 36px;text-align:center;}
+  .pending-icon{font-size:48px;margin-bottom:18px;}
+  .pending-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--gold);margin-bottom:10px;}
+  .pending-text{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:24px;}
+  .pending-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:999px;background:rgba(224,150,82,0.12);border:1px solid rgba(224,150,82,0.25);color:var(--orange);font-size:12px;font-weight:500;margin-bottom:24px;}
+  .pending-logout{background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'DM Sans',sans-serif;font-size:12px;padding:8px 20px;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s;}
+  .pending-logout:hover{border-color:var(--red);color:var(--red);}
+
+  /* ── REJECTED SCREEN ── */
+  #screen-rejected{align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(224,82,82,0.05) 0%,transparent 70%);}
+  .rejected-card{width:420px;background:var(--bg2);border:1px solid rgba(224,82,82,0.2);border-radius:var(--radius);padding:40px 36px;text-align:center;}
+
+  /* ── APP ── */
   #screen-app{flex-direction:column;}
   .topbar{height:50px;flex-shrink:0;background:rgba(8,8,9,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;}
   .topbar-logo{font-family:'DM Serif Display',serif;font-size:17px;letter-spacing:0.14em;color:var(--gold);}
@@ -127,6 +119,7 @@ onAuthStateChanged(auth, async (user) => {
   .topbar-role{font-size:10px;padding:2px 10px;border-radius:999px;}
   .topbar-role.driver{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(200,164,90,0.2);}
   .topbar-role.passenger{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(90,143,224,0.2);}
+  .topbar-role.admin{background:rgba(82,183,136,0.12);color:var(--green);border:1px solid rgba(82,183,136,0.25);}
   .btn-logout{padding:5px 12px;border-radius:999px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:all 0.15s;}
   .btn-logout:hover{border-color:var(--red);color:var(--red);}
 
@@ -137,7 +130,8 @@ onAuthStateChanged(auth, async (user) => {
   .nav-item:hover{background:var(--bg3);color:var(--text);}
   .nav-item.active{background:var(--gold-dim);color:var(--gold);}
   .nav-icon{width:16px;text-align:center;font-size:14px;}
-  .nav-badge{margin-left:auto;width:18px;height:18px;border-radius:50%;background:var(--gold);color:#080809;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;}
+  .nav-badge{margin-left:auto;min-width:18px;height:18px;border-radius:999px;background:var(--gold);color:#080809;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+  .nav-badge.red{background:var(--red);}
   .nav-divider{height:1px;background:var(--border);margin:10px 16px;}
 
   .main{flex:1;overflow-y:auto;}
@@ -153,6 +147,7 @@ onAuthStateChanged(auth, async (user) => {
   .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
   .card-title{font-size:10px;letter-spacing:0.08em;color:var(--text3);text-transform:uppercase;margin-bottom:12px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
   .mb14{margin-bottom:14px;}
   .flex-between{display:flex;align-items:center;justify-content:space-between;}
 
@@ -161,6 +156,8 @@ onAuthStateChanged(auth, async (user) => {
   .stat-label{font-size:10px;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;}
   .stat-val{font-family:'DM Serif Display',serif;font-size:26px;line-height:1;}
   .stat-val.gold{color:var(--gold);}
+  .stat-val.green{color:var(--green);}
+  .stat-val.red{color:var(--red);}
   .stat-delta{font-size:11px;color:var(--green);margin-top:5px;}
 
   .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:500;letter-spacing:0.03em;}
@@ -168,6 +165,7 @@ onAuthStateChanged(auth, async (user) => {
   .badge-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(82,183,136,0.2);}
   .badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(224,82,82,0.2);}
   .badge-muted{background:var(--bg3);color:var(--text3);border:1px solid var(--border);}
+  .badge-orange{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(224,150,82,0.2);}
 
   .ride-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
   .ride-item:last-child{border-bottom:none;}
@@ -181,10 +179,15 @@ onAuthStateChanged(auth, async (user) => {
   .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;}
   .av-gold{background:var(--gold-dim2);color:var(--gold);}
   .av-blue{background:var(--blue-dim);color:var(--blue);}
+  .av-green{background:var(--green-dim);color:var(--green);}
 
   .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;border:none;}
   .btn-gold{background:var(--gold);color:#080809;}
   .btn-gold:hover{background:var(--gold2);}
+  .btn-green{background:var(--green);color:#080809;}
+  .btn-green:hover{background:#6bcf9e;}
+  .btn-red{background:var(--red);color:#fff;}
+  .btn-red:hover{background:#e86b6b;}
   .btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border2);}
   .btn-outline:hover{border-color:var(--gold);color:var(--gold);}
   .btn-ghost{background:transparent;border:none;color:var(--text3);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;padding:6px 10px;}
@@ -199,6 +202,15 @@ onAuthStateChanged(auth, async (user) => {
   .f-select option{background:var(--bg3);}
   .f-textarea{resize:vertical;min-height:76px;}
 
+  /* driver approval card */
+  .driver-req-card{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}
+  .driver-req-info{flex:1;}
+  .driver-req-name{font-size:14px;margin-bottom:3px;}
+  .driver-req-email{font-size:11px;color:var(--text3);}
+  .driver-req-date{font-size:10px;color:var(--text3);margin-top:3px;}
+  .driver-req-actions{display:flex;gap:7px;flex-shrink:0;}
+
+  /* chat */
   .chat-wrap{display:flex;height:calc(100vh - 50px);}
   .chat-list{width:270px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
   .chat-list-header{padding:16px 18px 10px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;}
@@ -239,6 +251,7 @@ onAuthStateChanged(auth, async (user) => {
   .empty-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:10px;}
   .empty-icon{font-size:36px;opacity:0.3;}
 
+  /* schedule */
   .schedule-wrap{display:grid;grid-template-columns:1fr 360px;gap:18px;}
   .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
   .cal-month{font-family:'DM Serif Display',serif;font-size:17px;}
@@ -275,9 +288,10 @@ onAuthStateChanged(auth, async (user) => {
   <div class="loading-spinner"></div>
 </div>
 
+<!-- AUTH -->
 <div class="screen" id="screen-auth">
   <div class="auth-card">
-    <div class="auth-logo">EXEC</div>
+    <div class="auth-logo">ELITEdrive</div>
     <div class="auth-tagline">Motorista Executivo Individual</div>
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="switchTab('login')">Entrar</button>
@@ -305,6 +319,35 @@ onAuthStateChanged(auth, async (user) => {
   </div>
 </div>
 
+<!-- PENDING APPROVAL -->
+<div class="screen" id="screen-pending">
+  <div class="pending-card">
+    <div class="pending-icon">⏳</div>
+    <div class="pending-title">Cadastro em análise</div>
+    <div class="pending-badge">● Aguardando aprovação</div>
+    <div class="pending-text">
+      Seu cadastro como motorista foi recebido com sucesso.<br>
+      O administrador irá revisar suas informações e você receberá acesso em breve.<br><br>
+      <strong style="color:var(--text);">Volte mais tarde e tente entrar novamente.</strong>
+    </div>
+    <button class="pending-logout" onclick="doLogout()">Sair da conta</button>
+  </div>
+</div>
+
+<!-- REJECTED -->
+<div class="screen" id="screen-rejected">
+  <div class="rejected-card">
+    <div class="pending-icon">❌</div>
+    <div class="pending-title" style="color:var(--red);">Cadastro recusado</div>
+    <div class="pending-text" style="margin-top:10px;">
+      Infelizmente seu cadastro como motorista não foi aprovado.<br>
+      Entre em contato com o administrador para mais informações.
+    </div>
+    <button class="pending-logout" onclick="doLogout()">Sair da conta</button>
+  </div>
+</div>
+
+<!-- APP -->
 <div class="screen" id="screen-app">
   <div class="topbar">
     <div class="topbar-logo">EXEC</div>
@@ -315,26 +358,42 @@ onAuthStateChanged(auth, async (user) => {
     </div>
   </div>
   <div class="app-body">
+
+    <!-- SIDEBAR PASSENGER -->
     <div class="sidebar" id="sb-passenger" style="display:none;">
       <div class="nav-label">Menu</div>
       <button class="nav-item active" onclick="nav('p-home',this)"><span class="nav-icon">⬡</span>Início</button>
       <button class="nav-item" onclick="nav('p-schedule',this)"><span class="nav-icon">◷</span>Agendar corrida</button>
       <button class="nav-item" onclick="nav('p-rides',this)"><span class="nav-icon">↗</span>Minhas corridas</button>
-      <button class="nav-item" onclick="nav('p-chat',this);loadChat()"><span class="nav-icon">◎</span>Chat<span class="nav-badge" id="p-unread" style="display:none;">!</span></button>
+      <button class="nav-item" onclick="nav('p-chat',this);loadChat()"><span class="nav-icon">◎</span>Chat</button>
       <div class="nav-divider"></div>
       <button class="nav-item" onclick="nav('p-profile',this)"><span class="nav-icon">◯</span>Perfil</button>
     </div>
+
+    <!-- SIDEBAR DRIVER -->
     <div class="sidebar" id="sb-driver" style="display:none;">
       <div class="nav-label">Painel</div>
       <button class="nav-item active" onclick="nav('d-home',this)"><span class="nav-icon">⬡</span>Dashboard</button>
       <button class="nav-item" onclick="nav('d-agenda',this)"><span class="nav-icon">◷</span>Agenda</button>
       <button class="nav-item" onclick="nav('d-rides',this)"><span class="nav-icon">↗</span>Corridas</button>
-      <button class="nav-item" onclick="nav('d-chat',this);loadChat()"><span class="nav-icon">◎</span>Chat<span class="nav-badge" id="d-unread" style="display:none;">!</span></button>
+      <button class="nav-item" onclick="nav('d-chat',this);loadChat()"><span class="nav-icon">◎</span>Chat</button>
       <button class="nav-item" onclick="nav('d-financial',this)"><span class="nav-icon">◈</span>Financeiro</button>
       <div class="nav-divider"></div>
       <button class="nav-item" onclick="nav('d-settings',this)"><span class="nav-icon">⚙</span>Configurações</button>
     </div>
+
+    <!-- SIDEBAR ADMIN -->
+    <div class="sidebar" id="sb-admin" style="display:none;">
+      <div class="nav-label">Administração</div>
+      <button class="nav-item active" onclick="nav('a-home',this)"><span class="nav-icon">⬡</span>Painel</button>
+      <button class="nav-item" onclick="nav('a-drivers',this);loadAdminDrivers()"><span class="nav-icon">🚗</span>Motoristas<span class="nav-badge red" id="admin-pending-badge" style="display:none;">0</span></button>
+      <button class="nav-item" onclick="nav('a-passengers',this);loadAdminPassengers()"><span class="nav-icon">🧳</span>Passageiros</button>
+      <button class="nav-item" onclick="nav('a-rides',this);loadAdminRides()"><span class="nav-icon">↗</span>Corridas</button>
+    </div>
+
     <div class="main" id="main">
+
+      <!-- ── PASSENGER VIEWS ── -->
       <div class="view" id="view-p-home">
         <div class="page-header"><div class="page-title" id="p-greeting">Olá ✦</div><div class="page-sub">Bem-vindo ao seu painel</div></div>
         <div class="page-content"><div class="grid2">
@@ -342,6 +401,7 @@ onAuthStateChanged(auth, async (user) => {
           <div class="card"><div class="card-title">Ações rápidas</div><div style="display:flex;flex-direction:column;gap:8px;"><button class="btn btn-gold btn-block" onclick="nav('p-schedule',document.querySelector('#sb-passenger .nav-item:nth-child(2)'))">◷ Agendar corrida</button><button class="btn btn-outline btn-block" onclick="nav('p-chat',document.querySelector('#sb-passenger .nav-item:nth-child(4)'));loadChat()">◎ Falar com motorista</button><button class="btn btn-outline btn-block" onclick="nav('p-rides',document.querySelector('#sb-passenger .nav-item:nth-child(3)'))">↗ Ver corridas</button></div></div>
         </div></div>
       </div>
+
       <div class="view" id="view-p-schedule">
         <div class="page-header"><div class="page-title">Agendar corrida</div><div class="page-sub">Preço fixo · sem surpresas</div></div>
         <div class="page-content"><div class="schedule-wrap">
@@ -364,22 +424,27 @@ onAuthStateChanged(auth, async (user) => {
           </div>
           <div>
             <div class="card mb14"><div class="cal-nav"><button class="btn-ghost" onclick="changeMonth(-1)">‹</button><div class="cal-month" id="cal-title">—</div><button class="btn-ghost" onclick="changeMonth(1)">›</button></div><div class="cal-grid" id="cal-grid"></div></div>
-            <div class="card"><div class="card-title">Horários · <span id="ts-date-label">selecione um dia</span></div><div class="time-slots" id="time-slots"><div style="font-size:12px;color:var(--text3);">Selecione uma data no calendário</div></div></div>
+            <div class="card"><div class="card-title">Horários · <span id="ts-date-label">selecione um dia</span></div><div class="time-slots" id="time-slots"><div style="font-size:12px;color:var(--text3);">Selecione uma data</div></div></div>
           </div>
         </div></div>
       </div>
+
       <div class="view" id="view-p-rides"><div class="page-header"><div class="page-title">Minhas corridas</div></div><div class="page-content"><div class="card"><div id="p-rides-list" style="color:var(--text3);font-size:13px;">Carregando...</div></div></div></div>
+
       <div class="view" id="view-p-chat" style="padding:0;">
         <div class="chat-wrap">
-          <div class="chat-list"><div class="chat-list-header">Conversa com motorista</div><div class="chat-item active"><div class="avatar av-gold" style="width:34px;height:34px;font-size:12px;" id="p-driver-av">?</div><div class="chat-item-info"><div class="chat-item-name" id="p-driver-name">Motorista</div><div class="chat-item-prev" id="p-driver-prev">—</div></div></div></div>
+          <div class="chat-list"><div class="chat-list-header">Conversa com motorista</div><div class="chat-item active"><div class="avatar av-gold" style="width:34px;height:34px;font-size:12px;" id="p-driver-av">?</div><div class="chat-item-info"><div class="chat-item-name" id="p-driver-name">Motorista</div><div class="chat-item-prev">—</div></div></div></div>
           <div class="chat-main">
             <div class="chat-header"><div class="avatar av-gold" style="width:34px;height:34px;font-size:12px;" id="p-ch-av">?</div><div class="chat-header-info"><div class="chat-header-name" id="p-ch-name">Motorista</div><div class="chat-header-status" id="p-ch-status">Carregando...</div></div></div>
-            <div class="messages" id="p-messages"><div class="msg-system">Conectando ao chat...</div></div>
+            <div class="messages" id="p-messages"><div class="msg-system">Conectando...</div></div>
             <div class="chat-input-area"><input class="chat-input" id="p-input" placeholder="Digite uma mensagem..." onkeydown="if(event.key==='Enter')sendMessage('passenger')"><button class="btn btn-gold" onclick="sendMessage('passenger')">Enviar</button></div>
           </div>
         </div>
       </div>
+
       <div class="view" id="view-p-profile"><div class="page-header"><div class="page-title">Meu perfil</div></div><div class="page-content"><div class="card" style="max-width:480px;"><div class="f-group"><label class="f-label">Nome</label><input class="f-input" id="pp-name"></div><div class="f-group"><label class="f-label">E-mail</label><input class="f-input" id="pp-email" disabled style="opacity:0.5;"></div><div class="f-group"><label class="f-label">Telefone</label><input class="f-input" id="pp-phone" placeholder="+55 11 9 0000-0000"></div><button class="btn btn-gold" onclick="saveProfile()">Salvar</button></div></div></div>
+
+      <!-- ── DRIVER VIEWS ── -->
       <div class="view" id="view-d-home">
         <div class="page-header"><div class="page-title" id="d-greeting">Dashboard ✦</div><div class="page-sub" id="d-sub">Carregando...</div></div>
         <div class="page-content">
@@ -395,15 +460,19 @@ onAuthStateChanged(auth, async (user) => {
           </div>
         </div>
       </div>
+
       <div class="view" id="view-d-agenda"><div class="page-header"><div class="page-title">Agenda</div></div><div class="page-content"><div class="schedule-wrap"><div><div class="card mb14"><div class="cal-nav"><button class="btn-ghost" onclick="changeMonth(-1)">‹</button><div class="cal-month" id="d-cal-title">—</div><button class="btn-ghost" onclick="changeMonth(1)">›</button></div><div class="cal-grid" id="d-cal-grid"></div></div></div><div><div class="card"><div class="card-title">Corridas do dia</div><div id="d-day-rides" style="color:var(--text3);font-size:13px;">Selecione um dia</div></div></div></div></div></div>
       <div class="view" id="view-d-rides"><div class="page-header"><div class="page-title">Corridas</div></div><div class="page-content"><div class="card"><div id="d-rides-list" style="color:var(--text3);font-size:13px;">Carregando...</div></div></div></div>
+
       <div class="view" id="view-d-chat" style="padding:0;">
         <div class="chat-wrap">
           <div class="chat-list"><div class="chat-list-header">Passageiros</div><div id="d-contacts-list"><div style="padding:16px;font-size:12px;color:var(--text3);">Nenhuma conversa ainda</div></div></div>
           <div class="chat-main" id="d-chat-main"><div class="empty-chat"><div class="empty-icon">◎</div><div>Selecione um passageiro</div></div></div>
         </div>
       </div>
+
       <div class="view" id="view-d-financial"><div class="page-header"><div class="page-title">Financeiro</div></div><div class="page-content"><div class="stat-grid"><div class="stat-card"><div class="stat-label">Receita total</div><div class="stat-val gold" id="f-total">R$ 0</div><div class="stat-delta">Todas as corridas</div></div><div class="stat-card"><div class="stat-label">Corridas pagas</div><div class="stat-val" id="f-paid">0</div><div class="stat-delta">Concluídas</div></div><div class="stat-card"><div class="stat-label">Ticket médio</div><div class="stat-val" id="f-ticket">R$ 0</div><div class="stat-delta">Por corrida</div></div><div class="stat-card"><div class="stat-label">A receber</div><div class="stat-val gold" id="f-pending">R$ 0</div><div class="stat-delta">Agendadas</div></div></div><div class="card"><div class="card-title">Transações recentes</div><div id="f-transactions" style="color:var(--text3);font-size:13px;">Carregando...</div></div></div></div>
+
       <div class="view" id="view-d-settings">
         <div class="page-header"><div class="page-title">Configurações</div></div>
         <div class="page-content"><div class="grid2">
@@ -421,6 +490,48 @@ onAuthStateChanged(auth, async (user) => {
           <div class="card"><div class="card-title">Perfil profissional</div><div class="f-group"><label class="f-label">Nome</label><input class="f-input" id="dp-name"></div><div class="f-group"><label class="f-label">Veículo</label><input class="f-input" id="dp-car" placeholder="BMW 320i 2023 · Preto"></div><div class="f-group"><label class="f-label">Placa</label><input class="f-input" id="dp-plate" placeholder="ABC-1234"></div><div class="f-group"><label class="f-label">Bio</label><textarea class="f-textarea" id="dp-bio" placeholder="Descreva seu serviço..."></textarea></div><button class="btn btn-gold" onclick="saveDriverProfile()">Salvar perfil</button></div>
         </div></div>
       </div>
+
+      <!-- ── ADMIN VIEWS ── -->
+      <div class="view" id="view-a-home">
+        <div class="page-header"><div class="page-title" id="a-greeting">Painel Admin ✦</div><div class="page-sub">Visão geral do sistema</div></div>
+        <div class="page-content">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-label">Motoristas aprovados</div><div class="stat-val green" id="a-stat-drivers">—</div><div class="stat-delta">Ativos</div></div>
+            <div class="stat-card"><div class="stat-label">Aguardando aprovação</div><div class="stat-val" id="a-stat-pending" style="color:var(--orange);">—</div><div class="stat-delta" style="color:var(--text3);">Pendentes</div></div>
+            <div class="stat-card"><div class="stat-label">Passageiros</div><div class="stat-val" id="a-stat-passengers">—</div><div class="stat-delta" style="color:var(--text3);">Cadastrados</div></div>
+            <div class="stat-card"><div class="stat-label">Total de corridas</div><div class="stat-val gold" id="a-stat-rides">—</div><div class="stat-delta">No sistema</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Motoristas aguardando aprovação</div>
+            <div id="a-pending-drivers">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="view-a-drivers">
+        <div class="page-header"><div class="page-title">Motoristas</div><div class="page-sub">Gerencie os motoristas do sistema</div></div>
+        <div class="page-content">
+          <div class="card mb14">
+            <div class="card-title">Aguardando aprovação</div>
+            <div id="a-drivers-pending">Carregando...</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Motoristas aprovados</div>
+            <div id="a-drivers-approved">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="view-a-passengers">
+        <div class="page-header"><div class="page-title">Passageiros</div></div>
+        <div class="page-content"><div class="card"><div id="a-passengers-list">Carregando...</div></div></div>
+      </div>
+
+      <div class="view" id="view-a-rides">
+        <div class="page-header"><div class="page-title">Todas as corridas</div></div>
+        <div class="page-content"><div class="card"><div id="a-rides-list">Carregando...</div></div></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -428,411 +539,465 @@ onAuthStateChanged(auth, async (user) => {
 <div id="toast"></div>
 
 <script>
-// ── GLOBALS ──
-let _user = null, _chatUnsub = null, _selectedPayMethod = 'pix';
-let _calYear = new Date().getFullYear(), _calMonth = new Date().getMonth();
-let _selectedDate = null, _autoReplyOn = false;
-let _currentDriverContact = null, _driverInfo = null;
-let _appReady = false;
+const ADMIN_EMAIL = 'geziel_gomes@icloud.com';
 
-// ── LOADING ──
-function hideLoading() {
-  const el = document.getElementById('loading');
-  if (!el) return;
-  el.classList.add('hide');
-  setTimeout(() => el.style.display = 'none', 350);
-}
+let _user=null,_chatUnsub=null,_selectedPayMethod='pix';
+let _calYear=new Date().getFullYear(),_calMonth=new Date().getMonth();
+let _selectedDate=null,_autoReplyOn=false;
+let _currentDriverContact=null,_driverInfo=null;
+let _appReady=false;
 
-// ── INIT: espera o evento do módulo Firebase ──
-window.addEventListener('authStateChanged', (e) => {
-  if (_appReady) {
-    // Já inicializado — só atualiza se mudou
-    if (e.detail && !_user) { _user = e.detail; enterApp(); }
-    else if (!e.detail && _user) { _user = null; showScreen('auth'); }
+function hideLoading(){const el=document.getElementById('loading');if(!el)return;el.classList.add('hide');setTimeout(()=>el.style.display='none',350);}
+
+window.addEventListener('authStateChanged',(e)=>{
+  if(_appReady){
+    if(e.detail&&!_user){_user=e.detail;routeUser();}
+    else if(!e.detail&&_user){_user=null;showScreen('auth');}
     return;
   }
-  _appReady = true;
-  hideLoading();
-  if (e.detail) { _user = e.detail; enterApp(); }
+  _appReady=true;hideLoading();
+  if(e.detail){_user=e.detail;routeUser();}
   else showScreen('auth');
 });
 
-// Fallback: se o evento nunca chegar
-setTimeout(() => {
-  if (!_appReady) {
-    _appReady = true;
-    hideLoading();
-    showScreen('auth');
-    toast('Tempo limite de conexão esgotado.', 'error');
-  }
-}, 8000);
+setTimeout(()=>{if(!_appReady){_appReady=true;hideLoading();showScreen('auth');}},8000);
 
-window.addEventListener('load', () => {
-  const si = document.getElementById('s-date');
-  if (si) si.value = new Date().toISOString().split('T')[0];
-  buildCalendar('cal-grid', 'cal-title');
-  buildCalendar('d-cal-grid', 'd-cal-title');
+window.addEventListener('load',()=>{
+  const si=document.getElementById('s-date');
+  if(si)si.value=new Date().toISOString().split('T')[0];
+  buildCalendar('cal-grid','cal-title');
+  buildCalendar('d-cal-grid','d-cal-title');
 });
 
-// ── SCREENS ──
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-}
+// ── ROUTE USER based on role and status ──
+function routeUser(){
+  if(!_user){showScreen('auth');return;}
 
-// ── AUTH TABS ──
-function switchTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register')));
-  document.getElementById('tab-login').style.display = tab === 'login' ? 'block' : 'none';
-  document.getElementById('tab-register').style.display = tab === 'register' ? 'block' : 'none';
-  clearAuthError();
-}
-
-let _selectedRole = 'passenger';
-function selectRole(role) {
-  _selectedRole = role;
-  document.getElementById('role-passenger').classList.toggle('selected', role === 'passenger');
-  document.getElementById('role-driver').classList.toggle('selected', role === 'driver');
-}
-
-function showAuthError(msg) { const el = document.getElementById('auth-error'); el.textContent = msg; el.classList.add('show'); }
-function clearAuthError() { document.getElementById('auth-error').classList.remove('show'); }
-
-// ── LOGIN ──
-async function doLogin() {
-  clearAuthError();
-  const email = document.getElementById('l-email').value.trim();
-  const pass = document.getElementById('l-pass').value;
-  if (!email || !pass) { showAuthError('Preencha e-mail e senha.'); return; }
-  const btn = document.getElementById('btn-login');
-  btn.disabled = true; btn.textContent = 'Entrando...';
-  try {
-    const cred = await window._fns.signInWithEmailAndPassword(window._auth, email, pass);
-    console.log('[Login] success:', cred.user.email);
-    // onAuthStateChanged vai disparar e chamar enterApp automaticamente
-  } catch(e) {
-    console.error('[Login] error:', e.code, e.message);
-    showAuthError(authMsg(e.code));
-    btn.disabled = false; btn.textContent = 'Entrar';
+  // Admin
+  if(_user.email===ADMIN_EMAIL){
+    _user.role='admin';
+    enterAdmin();
+    return;
   }
+
+  // Driver pending approval
+  if(_user.role==='driver'&&_user.approvalStatus==='pending'){
+    showScreen('pending');return;
+  }
+
+  // Driver rejected
+  if(_user.role==='driver'&&_user.approvalStatus==='rejected'){
+    showScreen('rejected');return;
+  }
+
+  // Normal user (passenger or approved driver)
+  enterApp();
 }
 
-// ── REGISTER ──
-async function doRegister() {
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');}
+function switchTab(tab){document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));document.getElementById('tab-login').style.display=tab==='login'?'block':'none';document.getElementById('tab-register').style.display=tab==='register'?'block':'none';clearAuthError();}
+let _selectedRole='passenger';
+function selectRole(role){_selectedRole=role;document.getElementById('role-passenger').classList.toggle('selected',role==='passenger');document.getElementById('role-driver').classList.toggle('selected',role==='driver');}
+function showAuthError(msg){const el=document.getElementById('auth-error');el.textContent=msg;el.classList.add('show');}
+function clearAuthError(){document.getElementById('auth-error').classList.remove('show');}
+
+async function doLogin(){
   clearAuthError();
-  const name = document.getElementById('r-name').value.trim();
-  const email = document.getElementById('r-email').value.trim();
-  const pass = document.getElementById('r-pass').value;
-  if (!name || !email || !pass) { showAuthError('Preencha todos os campos.'); return; }
-  if (pass.length < 6) { showAuthError('Senha deve ter ao menos 6 caracteres.'); return; }
-  const btn = document.getElementById('btn-register');
-  btn.disabled = true; btn.textContent = 'Criando...';
-  try {
-    const fns = window._fns, auth = window._auth, db = window._db;
-    const cred = await fns.createUserWithEmailAndPassword(auth, email, pass);
-    await fns.updateProfile(cred.user, { displayName: name });
-    const userData = {
-      name, email, role: _selectedRole,
-      createdAt: fns.serverTimestamp(),
-      ...(_selectedRole === 'driver' ? { autoReply: false, car: '', plate: '', bio: '' } : {})
+  const email=document.getElementById('l-email').value.trim(),pass=document.getElementById('l-pass').value;
+  if(!email||!pass){showAuthError('Preencha e-mail e senha.');return;}
+  const btn=document.getElementById('btn-login');btn.disabled=true;btn.textContent='Entrando...';
+  try{await window._fns.signInWithEmailAndPassword(window._auth,email,pass);}
+  catch(e){showAuthError(authMsg(e.code));btn.disabled=false;btn.textContent='Entrar';}
+}
+
+async function doRegister(){
+  clearAuthError();
+  const name=document.getElementById('r-name').value.trim(),email=document.getElementById('r-email').value.trim(),pass=document.getElementById('r-pass').value;
+  if(!name||!email||!pass){showAuthError('Preencha todos os campos.');return;}
+  if(pass.length<6){showAuthError('Senha deve ter ao menos 6 caracteres.');return;}
+  const btn=document.getElementById('btn-register');btn.disabled=true;btn.textContent='Criando...';
+  try{
+    const fns=window._fns,auth=window._auth,db=window._db;
+    const cred=await fns.createUserWithEmailAndPassword(auth,email,pass);
+    await fns.updateProfile(cred.user,{displayName:name});
+
+    // Drivers start as pending, passengers go straight in
+    const isDriver=_selectedRole==='driver';
+    const userData={
+      name,email,role:_selectedRole,
+      createdAt:fns.serverTimestamp(),
+      ...(isDriver?{approvalStatus:'pending',autoReply:false,car:'',plate:'',bio:''}:{})
     };
-    await fns.setDoc(fns.doc(db, 'users', cred.user.uid), userData);
-    _user = { uid: cred.user.uid, ...userData };
-    enterApp();
-  } catch(e) {
-    console.error('[Register] error:', e.code, e.message);
-    showAuthError(authMsg(e.code));
-    btn.disabled = false; btn.textContent = 'Criar conta';
-  }
+    await fns.setDoc(fns.doc(db,'users',cred.user.uid),userData);
+    _user={uid:cred.user.uid,...userData};
+
+    if(isDriver){showScreen('pending');btn.disabled=false;btn.textContent='Criar conta';}
+    else{enterApp();}
+  }catch(e){showAuthError(authMsg(e.code));btn.disabled=false;btn.textContent='Criar conta';}
 }
 
-function authMsg(code) {
-  return ({
-    'auth/user-not-found': 'E-mail não encontrado.',
-    'auth/wrong-password': 'Senha incorreta.',
-    'auth/email-already-in-use': 'E-mail já cadastrado.',
-    'auth/invalid-email': 'E-mail inválido.',
-    'auth/weak-password': 'Senha muito fraca.',
-    'auth/invalid-credential': 'E-mail ou senha incorretos.',
-    'auth/network-request-failed': 'Erro de conexão.',
-    'auth/too-many-requests': 'Muitas tentativas. Tente mais tarde.',
-  }[code] || 'Erro: ' + code);
-}
+function authMsg(c){return({'auth/user-not-found':'E-mail não encontrado.','auth/wrong-password':'Senha incorreta.','auth/email-already-in-use':'E-mail já cadastrado.','auth/invalid-email':'E-mail inválido.','auth/weak-password':'Senha muito fraca.','auth/invalid-credential':'E-mail ou senha incorretos.','auth/network-request-failed':'Erro de conexão.','auth/too-many-requests':'Muitas tentativas. Tente mais tarde.'}[c]||'Erro: '+c);}
 
-// ── LOGOUT ──
-async function doLogout() {
-  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
+async function doLogout(){
+  if(_chatUnsub){_chatUnsub();_chatUnsub=null;}
   await window._fns.signOut(window._auth);
-  _user = null; _driverInfo = null; _appReady = false;
+  _user=null;_driverInfo=null;_appReady=false;
   showScreen('auth');
-  // Reabilita o flag para próximo login
-  setTimeout(() => { _appReady = false; }, 100);
+  setTimeout(()=>{_appReady=false;},100);
 }
 
-// ── ENTER APP ──
-function enterApp() {
+// ── ENTER APP (passenger / approved driver) ──
+function enterApp(){
   showScreen('app');
-  const role = _user.role;
-  document.getElementById('topbar-name').textContent = _user.name || _user.email;
-  const re = document.getElementById('topbar-role');
-  re.textContent = role === 'driver' ? 'Motorista' : 'Passageiro';
-  re.className = 'topbar-role ' + role;
-  document.getElementById('sb-passenger').style.display = role === 'passenger' ? 'flex' : 'none';
-  document.getElementById('sb-driver').style.display = role === 'driver' ? 'flex' : 'none';
+  const role=_user.role;
+  document.getElementById('topbar-name').textContent=_user.name||_user.email;
+  const re=document.getElementById('topbar-role');
+  re.textContent=role==='driver'?'Motorista':'Passageiro';
+  re.className='topbar-role '+role;
+  document.getElementById('sb-passenger').style.display=role==='passenger'?'flex':'none';
+  document.getElementById('sb-driver').style.display=role==='driver'?'flex':'none';
+  document.getElementById('sb-admin').style.display='none';
 
-  if (role === 'passenger') {
-    nav('p-home', document.querySelector('#sb-passenger .nav-item'));
-    document.getElementById('p-greeting').textContent = 'Olá, ' + (_user.name || '').split(' ')[0] + ' ✦';
-    document.getElementById('pp-name').value = _user.name || '';
-    document.getElementById('pp-email').value = _user.email || '';
-    document.getElementById('pp-phone').value = _user.phone || '';
-    loadPassengerRides(); findDriver();
-  } else {
-    nav('d-home', document.querySelector('#sb-driver .nav-item'));
-    document.getElementById('d-greeting').textContent = 'Olá, ' + (_user.name || '').split(' ')[0] + ' ✦';
-    document.getElementById('dp-name').value = _user.name || '';
-    document.getElementById('dp-car').value = _user.car || '';
-    document.getElementById('dp-plate').value = _user.plate || '';
-    document.getElementById('dp-bio').value = _user.bio || '';
-    _autoReplyOn = _user.autoReply || false;
-    updateAutoUI(); loadDriverDashboard(); loadDriverContacts(); loadFinancial();
+  if(role==='passenger'){
+    nav('p-home',document.querySelector('#sb-passenger .nav-item'));
+    document.getElementById('p-greeting').textContent='Olá, '+(_user.name||'').split(' ')[0]+' ✦';
+    document.getElementById('pp-name').value=_user.name||'';
+    document.getElementById('pp-email').value=_user.email||'';
+    document.getElementById('pp-phone').value=_user.phone||'';
+    loadPassengerRides();findDriver();
+  }else{
+    nav('d-home',document.querySelector('#sb-driver .nav-item'));
+    document.getElementById('d-greeting').textContent='Olá, '+(_user.name||'').split(' ')[0]+' ✦';
+    document.getElementById('dp-name').value=_user.name||'';
+    document.getElementById('dp-car').value=_user.car||'';
+    document.getElementById('dp-plate').value=_user.plate||'';
+    document.getElementById('dp-bio').value=_user.bio||'';
+    _autoReplyOn=_user.autoReply||false;
+    updateAutoUI();loadDriverDashboard();loadDriverContacts();loadFinancial();
   }
-
-  // Reabilita botões auth
-  const bl = document.getElementById('btn-login');
-  const br = document.getElementById('btn-register');
-  if (bl) { bl.disabled = false; bl.textContent = 'Entrar'; }
-  if (br) { br.disabled = false; br.textContent = 'Criar conta'; }
+  const bl=document.getElementById('btn-login'),br=document.getElementById('btn-register');
+  if(bl){bl.disabled=false;bl.textContent='Entrar';}
+  if(br){br.disabled=false;br.textContent='Criar conta';}
 }
 
-// ── NAV ──
-function nav(viewId, btn) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const v = document.getElementById('view-' + viewId);
-  if (v) v.classList.add('active');
-  if (btn) { const sb = btn.closest('.sidebar'); if (sb) sb.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
-  if (viewId === 'd-home') loadDriverDashboard();
-  if (viewId === 'd-rides') loadDriverRides();
-  if (viewId === 'p-rides') loadPassengerRides();
-  if (viewId === 'd-financial') loadFinancial();
+// ── ENTER ADMIN ──
+function enterAdmin(){
+  showScreen('app');
+  document.getElementById('topbar-name').textContent=_user.name||_user.email;
+  const re=document.getElementById('topbar-role');re.textContent='Admin';re.className='topbar-role admin';
+  document.getElementById('sb-passenger').style.display='none';
+  document.getElementById('sb-driver').style.display='none';
+  document.getElementById('sb-admin').style.display='flex';
+  nav('a-home',document.querySelector('#sb-admin .nav-item'));
+  document.getElementById('a-greeting').textContent='Olá, '+(_user.name||'').split(' ')[0]+' ✦';
+  loadAdminHome();
 }
 
-// ── FIND DRIVER ──
-async function findDriver() {
-  try {
-    const fns = window._fns, db = window._db;
-    const q = fns.query(fns.collection(db, 'users'), fns.where('role', '==', 'driver'));
-    const snap = await fns.getDocs(q);
-    if (!snap.empty) {
-      const d = snap.docs[0]; _driverInfo = { uid: d.id, ...d.data() };
-      document.getElementById('p-driver-name').textContent = _driverInfo.name || 'Motorista';
-      document.getElementById('p-ch-name').textContent = _driverInfo.name || 'Motorista';
-      const init = initials(_driverInfo.name);
-      document.getElementById('p-driver-av').textContent = init;
-      document.getElementById('p-ch-av').textContent = init;
-      document.getElementById('p-ch-status').textContent = '● Online';
-    } else {
-      document.getElementById('p-ch-status').textContent = 'Nenhum motorista cadastrado';
-      document.getElementById('p-ch-status').className = 'chat-header-status offline';
-    }
-  } catch(e) { console.error(e); }
+// ── ADMIN FUNCTIONS ──
+async function loadAdminHome(){
+  const fns=window._fns,db=window._db;
+  const usersSnap=await fns.getDocs(fns.collection(db,'users'));
+  const ridesSnap=await fns.getDocs(fns.collection(db,'rides'));
+  let drivers=0,pendingDrivers=[],passengers=0;
+  usersSnap.forEach(d=>{
+    const u=d.data();
+    if(u.role==='driver'&&u.approvalStatus==='approved')drivers++;
+    if(u.role==='driver'&&u.approvalStatus==='pending')pendingDrivers.push({uid:d.id,...u});
+    if(u.role==='passenger')passengers++;
+  });
+  document.getElementById('a-stat-drivers').textContent=drivers;
+  document.getElementById('a-stat-pending').textContent=pendingDrivers.length;
+  document.getElementById('a-stat-passengers').textContent=passengers;
+  document.getElementById('a-stat-rides').textContent=ridesSnap.size;
+
+  // Update badge
+  const badge=document.getElementById('admin-pending-badge');
+  if(pendingDrivers.length>0){badge.textContent=pendingDrivers.length;badge.style.display='flex';}
+  else{badge.style.display='none';}
+
+  // Pending list on home
+  const container=document.getElementById('a-pending-drivers');
+  if(pendingDrivers.length===0){container.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum motorista aguardando aprovação ✓</div>';return;}
+  container.innerHTML='';
+  pendingDrivers.forEach(u=>renderDriverRequest(container,u));
 }
 
-// ── CHAT ──
-function loadChat() {
-  if (_user.role === 'passenger') { if (!_driverInfo) { setTimeout(loadChat, 1000); return; } openChatThread(_driverInfo.uid); }
+async function loadAdminDrivers(){
+  const fns=window._fns,db=window._db;
+  const q=fns.query(fns.collection(db,'users'),fns.where('role','==','driver'));
+  const snap=await fns.getDocs(q);
+  const pending=[],approved=[],rejected=[];
+  snap.forEach(d=>{const u={uid:d.id,...d.data()};if(u.approvalStatus==='pending')pending.push(u);else if(u.approvalStatus==='rejected')rejected.push(u);else approved.push(u);});
+
+  const pCont=document.getElementById('a-drivers-pending');
+  const aCont=document.getElementById('a-drivers-approved');
+
+  if(pending.length===0){pCont.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum pendente ✓</div>';}
+  else{pCont.innerHTML='';pending.forEach(u=>renderDriverRequest(pCont,u));}
+
+  if(approved.length===0){aCont.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum aprovado ainda.</div>';}
+  else{
+    aCont.innerHTML='';
+    approved.forEach(u=>{
+      const div=document.createElement('div');div.className='driver-req-card';
+      div.innerHTML=`<div class="avatar av-gold">${initials(u.name)}</div><div class="driver-req-info"><div class="driver-req-name">${u.name}</div><div class="driver-req-email">${u.email}</div><div class="driver-req-date">${u.car||'Veículo não informado'}</div></div><div style="display:flex;align-items:center;gap:10px;"><span class="badge badge-green">✓ Aprovado</span><button class="btn btn-outline btn-sm" onclick="rejectDriver('${u.uid}')">Revogar</button></div>`;
+      aCont.appendChild(div);
+    });
+  }
 }
 
-function openChatThread(otherUid) {
-  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
-  const fns = window._fns, db = window._db;
-  const ids = [_user.uid, otherUid].sort(), chatId = ids.join('_');
-  const q = fns.query(fns.collection(db, 'chats', chatId, 'messages'), fns.orderBy('createdAt', 'asc'));
-  const container = _user.role === 'passenger' ? document.getElementById('p-messages') : document.getElementById('d-msg-area');
-  if (container) container.innerHTML = '';
-  _chatUnsub = fns.onSnapshot(q, (snap) => {
-    if (!container) return;
-    container.innerHTML = '';
-    snap.forEach(doc => renderMessage(container, doc.data()));
-    container.scrollTop = container.scrollHeight;
+async function loadAdminPassengers(){
+  const fns=window._fns,db=window._db;
+  const q=fns.query(fns.collection(db,'users'),fns.where('role','==','passenger'));
+  const snap=await fns.getDocs(q);
+  const list=document.getElementById('a-passengers-list');
+  if(snap.empty){list.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhum passageiro cadastrado.</div>';return;}
+  list.innerHTML='';
+  snap.forEach(d=>{
+    const u={uid:d.id,...d.data()};
+    const div=document.createElement('div');div.className='ride-item';
+    const dt=u.createdAt?.toDate?u.createdAt.toDate().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    div.innerHTML=`<div class="avatar av-blue">${initials(u.name)}</div><div class="ride-info"><div class="ride-route">${u.name}</div><div class="ride-meta">${u.email} · cadastrado em ${dt}</div></div>`;
+    list.appendChild(div);
   });
 }
 
-function renderMessage(container, msg) {
-  if (!msg.text) return;
-  const isSelf = msg.senderId === _user.uid, isAuto = msg.auto === true;
-  const div = document.createElement('div'); div.className = 'msg' + (isSelf ? ' sent' : '');
-  const avClass = isSelf ? (_user.role === 'driver' ? 'av-gold' : 'av-blue') : (_user.role === 'driver' ? 'av-blue' : 'av-gold');
-  const avInit = isSelf ? initials(_user.name) : initials(isAuto ? 'Auto' : (_driverInfo?.name || '?'));
-  const bubbleClass = isSelf ? 'bubble bubble-sent' : (isAuto ? 'bubble bubble-auto' : 'bubble bubble-recv');
-  const ts = msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-  const autoTag = isAuto && !isSelf ? '<div class="auto-tag">⚡ Resposta automática</div>' : '';
-  div.innerHTML = `<div class="avatar ${avClass}" style="width:28px;height:28px;font-size:11px;flex-shrink:0;align-self:flex-end;">${avInit}</div><div><div class="${bubbleClass}">${msg.text}${autoTag}</div><div class="msg-time" style="${isSelf ? 'text-align:right;' : ''}">${ts}</div></div>`;
+async function loadAdminRides(){
+  const fns=window._fns,db=window._db;
+  const snap=await fns.getDocs(fns.collection(db,'rides'));
+  const list=document.getElementById('a-rides-list');
+  if(snap.empty){list.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhuma corrida no sistema.</div>';return;}
+  list.innerHTML='';
+  snap.forEach(d=>{
+    const r=d.data(),dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt);
+    const ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const sb={pending:'badge-gold',confirmed:'badge-green',completed:'badge-muted',cancelled:'badge-red'}[r.status]||'badge-muted';
+    const sl={pending:'Aguardando',confirmed:'Confirmada',completed:'Concluída',cancelled:'Cancelada'}[r.status]||r.status;
+    list.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:${r.status==='confirmed'?'var(--green)':'var(--text3)'}"></div><div class="ride-info"><div class="ride-route">${r.passengerName} → ${r.origin} → ${r.destination}</div><div class="ride-meta">${ds} · ${r.serviceType}</div></div><div style="text-align:right;"><div class="ride-price">R$ ${r.priceFixed}</div><span class="badge ${sb}" style="margin-top:3px;">${sl}</span></div></div>`);
+  });
+}
+
+function renderDriverRequest(container,u){
+  const div=document.createElement('div');div.className='driver-req-card';
+  const dt=u.createdAt?.toDate?u.createdAt.toDate().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  div.innerHTML=`<div class="avatar av-gold">${initials(u.name)}</div><div class="driver-req-info"><div class="driver-req-name">${u.name}</div><div class="driver-req-email">${u.email}</div><div class="driver-req-date">Solicitado em ${dt}</div></div><div class="driver-req-actions"><button class="btn btn-green btn-sm" onclick="approveDriver('${u.uid}')">✓ Aprovar</button><button class="btn btn-red btn-sm" onclick="rejectDriver('${u.uid}')">✕ Recusar</button></div>`;
   container.appendChild(div);
 }
 
-async function sendMessage(role) {
-  const inputId = role === 'passenger' ? 'p-input' : 'd-input-' + _currentDriverContact;
-  const input = document.getElementById(inputId); if (!input) return;
-  const text = input.value.trim(); if (!text) return;
-  const otherUid = role === 'passenger' ? _driverInfo?.uid : _currentDriverContact;
-  if (!otherUid) { toast('Nenhum motorista encontrado', 'error'); return; }
-  const fns = window._fns, db = window._db;
-  const ids = [_user.uid, otherUid].sort(), chatId = ids.join('_');
-  await fns.addDoc(fns.collection(db, 'chats', chatId, 'messages'), { text, senderId: _user.uid, senderName: _user.name, auto: false, createdAt: fns.serverTimestamp() });
-  input.value = '';
-  if (role === 'passenger') checkAutoReply(chatId, otherUid);
+async function approveDriver(uid){
+  const fns=window._fns,db=window._db;
+  await fns.updateDoc(fns.doc(db,'users',uid),{approvalStatus:'approved'});
+  toast('✓ Motorista aprovado!','success');
+  loadAdminHome();
+  if(document.getElementById('view-a-drivers').classList.contains('active'))loadAdminDrivers();
 }
 
-async function checkAutoReply(chatId, driverUid) {
-  const fns = window._fns, db = window._db;
-  const driverDoc = await fns.getDoc(fns.doc(db, 'users', driverUid));
-  if (!driverDoc.exists()) return;
-  const dd = driverDoc.data(); if (!dd.autoReply) return;
-  const replies = ['Olá! Recebi sua mensagem. Estarei no local no horário combinado. ✓', 'Confirmado! Pode contar comigo.', 'Certo, estou ciente. Qualquer dúvida, estou à disposição.', 'Perfeito! Tudo anotado.'];
-  const reply = replies[Math.floor(Math.random() * replies.length)];
-  setTimeout(async () => { await fns.addDoc(fns.collection(db, 'chats', chatId, 'messages'), { text: reply, senderId: driverUid, senderName: dd.name, auto: true, createdAt: fns.serverTimestamp() }); }, 1200);
+async function rejectDriver(uid){
+  const fns=window._fns,db=window._db;
+  await fns.updateDoc(fns.doc(db,'users',uid),{approvalStatus:'rejected'});
+  toast('Motorista recusado.','error');
+  loadAdminHome();
+  if(document.getElementById('view-a-drivers').classList.contains('active'))loadAdminDrivers();
 }
 
-async function loadDriverContacts() {
-  if (_user.role !== 'driver') return;
-  const fns = window._fns, db = window._db;
-  const q = fns.query(fns.collection(db, 'users'), fns.where('role', '==', 'passenger'));
-  const snap = await fns.getDocs(q);
-  const list = document.getElementById('d-contacts-list'); list.innerHTML = '';
-  if (snap.empty) { list.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text3);">Nenhum passageiro cadastrado</div>'; return; }
-  snap.forEach(d => {
-    const p = { uid: d.id, ...d.data() }, ids = [_user.uid, p.uid].sort(), chatId = ids.join('_');
-    const item = document.createElement('div'); item.className = 'chat-item';
-    item.innerHTML = `<div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(p.name)}</div><div class="chat-item-info"><div class="chat-item-name">${p.name}</div><div class="chat-item-prev" id="prev-${chatId}">Clique para abrir</div></div>`;
-    item.onclick = () => openDriverChat(p, chatId, item); list.appendChild(item);
+// ── NAV ──
+function nav(viewId,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const v=document.getElementById('view-'+viewId);if(v)v.classList.add('active');
+  if(btn){const sb=btn.closest('.sidebar');if(sb)sb.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  if(viewId==='d-home')loadDriverDashboard();
+  if(viewId==='d-rides')loadDriverRides();
+  if(viewId==='p-rides')loadPassengerRides();
+  if(viewId==='d-financial')loadFinancial();
+  if(viewId==='a-home')loadAdminHome();
+}
+
+// ── FIND DRIVER ──
+async function findDriver(){
+  try{
+    const fns=window._fns,db=window._db;
+    const q=fns.query(fns.collection(db,'users'),fns.where('role','==','driver'),fns.where('approvalStatus','==','approved'));
+    const snap=await fns.getDocs(q);
+    if(!snap.empty){
+      const d=snap.docs[0];_driverInfo={uid:d.id,...d.data()};
+      document.getElementById('p-driver-name').textContent=_driverInfo.name||'Motorista';
+      document.getElementById('p-ch-name').textContent=_driverInfo.name||'Motorista';
+      const init=initials(_driverInfo.name);
+      document.getElementById('p-driver-av').textContent=init;
+      document.getElementById('p-ch-av').textContent=init;
+      document.getElementById('p-ch-status').textContent='● Online';
+    }else{
+      document.getElementById('p-ch-status').textContent='Nenhum motorista disponível';
+      document.getElementById('p-ch-status').className='chat-header-status offline';
+    }
+  }catch(e){console.error(e);}
+}
+
+// ── CHAT ──
+function loadChat(){if(_user.role==='passenger'){if(!_driverInfo){setTimeout(loadChat,1000);return;}openChatThread(_driverInfo.uid);}}
+function openChatThread(otherUid){
+  if(_chatUnsub){_chatUnsub();_chatUnsub=null;}
+  const fns=window._fns,db=window._db,ids=[_user.uid,otherUid].sort(),chatId=ids.join('_');
+  const q=fns.query(fns.collection(db,'chats',chatId,'messages'),fns.orderBy('createdAt','asc'));
+  const container=_user.role==='passenger'?document.getElementById('p-messages'):document.getElementById('d-msg-area');
+  if(container)container.innerHTML='';
+  _chatUnsub=fns.onSnapshot(q,(snap)=>{
+    if(!container)return;
+    container.innerHTML='';
+    snap.forEach(doc=>renderMessage(container,doc.data()));
+    container.scrollTop=container.scrollHeight;
   });
 }
 
-function openDriverChat(passenger, chatId, itemEl) {
-  _currentDriverContact = passenger.uid;
-  document.querySelectorAll('#d-contacts-list .chat-item').forEach(i => i.classList.remove('active')); itemEl.classList.add('active');
-  const main = document.getElementById('d-chat-main');
-  main.innerHTML = `<div class="auto-toggle-bar"><span class="auto-label">Auto-resposta</span><span class="auto-status ${_autoReplyOn ? 'on' : 'off'}" id="at-label">${_autoReplyOn ? '● Ativa' : '○ Desativada'}</span><span style="font-size:11px;color:var(--text3);">— <a href="#" onclick="nav('d-settings',null);return false;" style="color:var(--gold);">Configurações</a></span></div><div class="chat-header"><div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(passenger.name)}</div><div class="chat-header-info"><div class="chat-header-name">${passenger.name}</div><div class="chat-header-status">● Passageiro</div></div></div><div class="messages" id="d-msg-area"></div><div class="chat-input-area"><input class="chat-input" id="d-input-${passenger.uid}" placeholder="Responder ${passenger.name}..." onkeydown="if(event.key==='Enter')sendMessage('driver')"><button class="btn btn-gold" onclick="sendMessage('driver')">Enviar</button></div>`;
+function renderMessage(container,msg){
+  if(!msg.text)return;
+  const isSelf=msg.senderId===_user.uid,isAuto=msg.auto===true;
+  const div=document.createElement('div');div.className='msg'+(isSelf?' sent':'');
+  const avClass=isSelf?(_user.role==='driver'?'av-gold':'av-blue'):(_user.role==='driver'?'av-blue':'av-gold');
+  const avInit=isSelf?initials(_user.name):initials(isAuto?'Auto':(_driverInfo?.name||'?'));
+  const bubbleClass=isSelf?'bubble bubble-sent':(isAuto?'bubble bubble-auto':'bubble bubble-recv');
+  const ts=msg.createdAt?.toDate?msg.createdAt.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+  const autoTag=isAuto&&!isSelf?'<div class="auto-tag">⚡ Resposta automática</div>':'';
+  div.innerHTML=`<div class="avatar ${avClass}" style="width:28px;height:28px;font-size:11px;flex-shrink:0;align-self:flex-end;">${avInit}</div><div><div class="${bubbleClass}">${msg.text}${autoTag}</div><div class="msg-time" style="${isSelf?'text-align:right;':''}">${ts}</div></div>`;
+  container.appendChild(div);
+}
+
+async function sendMessage(role){
+  const inputId=role==='passenger'?'p-input':'d-input-'+_currentDriverContact;
+  const input=document.getElementById(inputId);if(!input)return;
+  const text=input.value.trim();if(!text)return;
+  const otherUid=role==='passenger'?_driverInfo?.uid:_currentDriverContact;
+  if(!otherUid){toast('Nenhum motorista encontrado','error');return;}
+  const fns=window._fns,db=window._db,ids=[_user.uid,otherUid].sort(),chatId=ids.join('_');
+  await fns.addDoc(fns.collection(db,'chats',chatId,'messages'),{text,senderId:_user.uid,senderName:_user.name,auto:false,createdAt:fns.serverTimestamp()});
+  input.value='';
+  if(role==='passenger')checkAutoReply(chatId,otherUid);
+}
+
+async function checkAutoReply(chatId,driverUid){
+  const fns=window._fns,db=window._db;
+  const driverDoc=await fns.getDoc(fns.doc(db,'users',driverUid));
+  if(!driverDoc.exists())return;
+  const dd=driverDoc.data();if(!dd.autoReply)return;
+  const replies=['Olá! Recebi sua mensagem. Estarei no local no horário combinado. ✓','Confirmado! Pode contar comigo.','Certo, estou ciente. Qualquer dúvida, estou à disposição.','Perfeito! Tudo anotado.'];
+  setTimeout(async()=>{await fns.addDoc(fns.collection(db,'chats',chatId,'messages'),{text:replies[Math.floor(Math.random()*replies.length)],senderId:driverUid,senderName:dd.name,auto:true,createdAt:fns.serverTimestamp()});},1200);
+}
+
+async function loadDriverContacts(){
+  if(_user.role!=='driver')return;
+  const fns=window._fns,db=window._db;
+  const q=fns.query(fns.collection(db,'users'),fns.where('role','==','passenger'));
+  const snap=await fns.getDocs(q);
+  const list=document.getElementById('d-contacts-list');list.innerHTML='';
+  if(snap.empty){list.innerHTML='<div style="padding:16px;font-size:12px;color:var(--text3);">Nenhum passageiro cadastrado</div>';return;}
+  snap.forEach(d=>{
+    const p={uid:d.id,...d.data()},ids=[_user.uid,p.uid].sort(),chatId=ids.join('_');
+    const item=document.createElement('div');item.className='chat-item';
+    item.innerHTML=`<div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(p.name)}</div><div class="chat-item-info"><div class="chat-item-name">${p.name}</div><div class="chat-item-prev" id="prev-${chatId}">Clique para abrir</div></div>`;
+    item.onclick=()=>openDriverChat(p,chatId,item);list.appendChild(item);
+  });
+}
+
+function openDriverChat(passenger,chatId,itemEl){
+  _currentDriverContact=passenger.uid;
+  document.querySelectorAll('#d-contacts-list .chat-item').forEach(i=>i.classList.remove('active'));itemEl.classList.add('active');
+  const main=document.getElementById('d-chat-main');
+  main.innerHTML=`<div class="auto-toggle-bar"><span class="auto-label">Auto-resposta</span><span class="auto-status ${_autoReplyOn?'on':'off'}" id="at-label">${_autoReplyOn?'● Ativa':'○ Desativada'}</span><span style="font-size:11px;color:var(--text3);">— <a href="#" onclick="nav('d-settings',null);return false;" style="color:var(--gold);">Configurações</a></span></div><div class="chat-header"><div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(passenger.name)}</div><div class="chat-header-info"><div class="chat-header-name">${passenger.name}</div><div class="chat-header-status">● Passageiro</div></div></div><div class="messages" id="d-msg-area"></div><div class="chat-input-area"><input class="chat-input" id="d-input-${passenger.uid}" placeholder="Responder ${passenger.name}..." onkeydown="if(event.key==='Enter')sendMessage('driver')"><button class="btn btn-gold" onclick="sendMessage('driver')">Enviar</button></div>`;
   openChatThread(passenger.uid);
 }
 
-async function toggleAutoReply() {
-  _autoReplyOn = !_autoReplyOn;
-  const fns = window._fns, db = window._db;
-  await fns.updateDoc(fns.doc(db, 'users', _user.uid), { autoReply: _autoReplyOn });
-  _user.autoReply = _autoReplyOn; updateAutoUI();
-  toast(_autoReplyOn ? '⚡ Auto-resposta ativada' : 'Auto-resposta desativada');
+async function toggleAutoReply(){
+  _autoReplyOn=!_autoReplyOn;const fns=window._fns,db=window._db;
+  await fns.updateDoc(fns.doc(db,'users',_user.uid),{autoReply:_autoReplyOn});
+  _user.autoReply=_autoReplyOn;updateAutoUI();
+  toast(_autoReplyOn?'⚡ Auto-resposta ativada':'Auto-resposta desativada');
 }
 
-function updateAutoUI() {
-  const track = document.getElementById('auto-toggle'), st = document.getElementById('auto-status-text'), da = document.getElementById('d-stat-auto'), al = document.getElementById('at-label');
-  if (track) track.classList.toggle('on', _autoReplyOn);
-  if (st) { st.textContent = _autoReplyOn ? '⚡ Ativa — mensagens respondidas automaticamente' : '○ Desativada — apenas você responde'; st.style.color = _autoReplyOn ? 'var(--green)' : 'var(--text3)'; }
-  if (da) { da.textContent = _autoReplyOn ? '⚡ Ativa' : '○ Off'; da.style.color = _autoReplyOn ? 'var(--green)' : 'var(--text3)'; }
-  if (al) { al.textContent = _autoReplyOn ? '● Ativa' : '○ Desativada'; al.className = 'auto-status ' + (_autoReplyOn ? 'on' : 'off'); }
+function updateAutoUI(){
+  const track=document.getElementById('auto-toggle'),st=document.getElementById('auto-status-text'),da=document.getElementById('d-stat-auto'),al=document.getElementById('at-label');
+  if(track)track.classList.toggle('on',_autoReplyOn);
+  if(st){st.textContent=_autoReplyOn?'⚡ Ativa — mensagens respondidas automaticamente':'○ Desativada — apenas você responde';st.style.color=_autoReplyOn?'var(--green)':'var(--text3)';}
+  if(da){da.textContent=_autoReplyOn?'⚡ Ativa':'○ Off';da.style.color=_autoReplyOn?'var(--green)':'var(--text3)';}
+  if(al){al.textContent=_autoReplyOn?'● Ativa':'○ Desativada';al.className='auto-status '+(_autoReplyOn?'on':'off');}
 }
 
-async function submitRide() {
-  if (!_driverInfo) { toast('Nenhum motorista disponível', 'error'); return; }
-  const origin = document.getElementById('s-origin').value.trim(), dest = document.getElementById('s-dest').value.trim();
-  const date = document.getElementById('s-date').value, time = document.getElementById('s-time').value;
-  const notes = document.getElementById('s-notes').value.trim();
-  const priceEl = document.getElementById('s-type'), price = parseInt(priceEl.value);
-  const typeLabel = priceEl.options[priceEl.selectedIndex].text.split('—')[0].trim();
-  if (!origin || !dest || !date || !time) { toast('Preencha origem, destino, data e horário', 'error'); return; }
-  const fns = window._fns, db = window._db;
-  await fns.addDoc(fns.collection(db, 'rides'), { passengerId: _user.uid, passengerName: _user.name, driverId: _driverInfo.uid, origin, destination: dest, scheduledAt: new Date(date + 'T' + time), serviceType: typeLabel, priceFixed: price, paymentMethod: _selectedPayMethod, notes, status: 'pending', createdAt: fns.serverTimestamp() });
-  toast('✓ Corrida agendada! Aguardando confirmação.', 'success');
-  nav('p-home', document.querySelector('#sb-passenger .nav-item')); loadPassengerRides();
+async function submitRide(){
+  if(!_driverInfo){toast('Nenhum motorista disponível','error');return;}
+  const origin=document.getElementById('s-origin').value.trim(),dest=document.getElementById('s-dest').value.trim(),date=document.getElementById('s-date').value,time=document.getElementById('s-time').value,notes=document.getElementById('s-notes').value.trim(),priceEl=document.getElementById('s-type'),price=parseInt(priceEl.value),typeLabel=priceEl.options[priceEl.selectedIndex].text.split('—')[0].trim();
+  if(!origin||!dest||!date||!time){toast('Preencha origem, destino, data e horário','error');return;}
+  const fns=window._fns,db=window._db;
+  await fns.addDoc(fns.collection(db,'rides'),{passengerId:_user.uid,passengerName:_user.name,driverId:_driverInfo.uid,origin,destination:dest,scheduledAt:new Date(date+'T'+time),serviceType:typeLabel,priceFixed:price,paymentMethod:_selectedPayMethod,notes,status:'pending',createdAt:fns.serverTimestamp()});
+  toast('✓ Corrida agendada! Aguardando confirmação.','success');
+  nav('p-home',document.querySelector('#sb-passenger .nav-item'));loadPassengerRides();
 }
 
-async function loadPassengerRides() {
-  const fns = window._fns, db = window._db;
-  const q = fns.query(fns.collection(db, 'rides'), fns.where('passengerId', '==', _user.uid));
-  const snap = await fns.getDocs(q);
-  const list = document.getElementById('p-rides-list'); if (!list) return;
-  if (snap.empty) { list.innerHTML = '<div style="color:var(--text3);font-size:13px;">Nenhuma corrida ainda. <a href="#" onclick="nav(\'p-schedule\',null);return false;" style="color:var(--gold);">Agendar agora →</a></div>'; return; }
-  list.innerHTML = '';
-  snap.forEach(d => { const r = d.data(), dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt), ds = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' · ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), sb = { pending: 'badge-gold', confirmed: 'badge-green', completed: 'badge-muted', cancelled: 'badge-red' }[r.status] || 'badge-muted', sl = { pending: 'Aguardando', confirmed: 'Confirmada', completed: 'Concluída', cancelled: 'Cancelada' }[r.status] || r.status; list.insertAdjacentHTML('beforeend', `<div class="ride-item"><div class="ride-dot" style="background:${r.status === 'confirmed' ? 'var(--green)' : 'var(--text3)'}"></div><div class="ride-info"><div class="ride-route">${r.origin} → ${r.destination}</div><div class="ride-meta">${ds} · ${r.serviceType}</div></div><div style="text-align:right;"><div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div><span class="badge ${sb}" style="margin-top:3px;">${sl}</span></div></div>`); });
+async function loadPassengerRides(){
+  const fns=window._fns,db=window._db,q=fns.query(fns.collection(db,'rides'),fns.where('passengerId','==',_user.uid)),snap=await fns.getDocs(q);
+  const list=document.getElementById('p-rides-list');if(!list)return;
+  if(snap.empty){list.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhuma corrida ainda. <a href="#" onclick="nav(\'p-schedule\',null);return false;" style="color:var(--gold);">Agendar agora →</a></div>';return;}
+  list.innerHTML='';
+  snap.forEach(d=>{const r=d.data(),dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),sb={pending:'badge-gold',confirmed:'badge-green',completed:'badge-muted',cancelled:'badge-red'}[r.status]||'badge-muted',sl={pending:'Aguardando',confirmed:'Confirmada',completed:'Concluída',cancelled:'Cancelada'}[r.status]||r.status;list.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:${r.status==='confirmed'?'var(--green)':'var(--text3)'}"></div><div class="ride-info"><div class="ride-route">${r.origin} → ${r.destination}</div><div class="ride-meta">${ds} · ${r.serviceType}</div></div><div style="text-align:right;"><div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div><span class="badge ${sb}" style="margin-top:3px;">${sl}</span></div></div>`);});
 }
 
-async function loadDriverDashboard() {
-  if (_user.role !== 'driver') return;
-  const fns = window._fns, db = window._db;
-  const q = fns.query(fns.collection(db, 'rides'), fns.where('driverId', '==', _user.uid));
-  const snap = await fns.getDocs(q);
-  let pending = [], confirmed = [], pendingRev = 0;
-  snap.forEach(d => { const r = { id: d.id, ...d.data() }; if (r.status === 'pending') pending.push(r); if (r.status === 'confirmed') { confirmed.push(r); pendingRev += r.priceFixed || 0; } });
-  document.getElementById('d-stat-rides').textContent = snap.size;
-  document.getElementById('d-stat-revenue').textContent = 'R$ ' + pendingRev;
-  document.getElementById('d-stat-pending').textContent = pending.length;
-  document.getElementById('d-sub').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
-  const pList = document.getElementById('d-pending-list');
-  pList.innerHTML = pending.length === 0 ? '<div style="color:var(--text3);font-size:13px;">Nenhuma corrida pendente ✓</div>' : '';
-  pending.forEach(r => { const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt), ds = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' · ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); pList.insertAdjacentHTML('beforeend', `<div style="padding:12px;background:var(--bg3);border-radius:9px;border:1px solid rgba(200,164,90,0.2);margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;">${r.passengerName}</span><span style="font-size:13px;color:var(--gold);">R$ ${r.priceFixed}</span></div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;">${ds} · ${r.origin} → ${r.destination}</div><div style="display:flex;gap:7px;"><button class="btn btn-gold btn-sm" onclick="confirmRide('${r.id}')">✓ Confirmar</button><button class="btn btn-outline btn-sm" onclick="cancelRide('${r.id}')">Recusar</button></div></div>`); });
-  const cList = document.getElementById('d-confirmed-list');
-  cList.innerHTML = confirmed.length === 0 ? '<div style="color:var(--text3);font-size:13px;">Nenhuma confirmada ainda</div>' : '';
-  confirmed.slice(0, 4).forEach(r => { const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt), ds = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' · ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); cList.insertAdjacentHTML('beforeend', `<div class="ride-item"><div class="ride-dot" style="background:var(--green)"></div><div class="ride-info"><div class="ride-route">${r.passengerName}</div><div class="ride-meta">${ds}</div></div><div class="ride-price">R$ ${r.priceFixed}</div></div>`); });
+async function loadDriverDashboard(){
+  if(_user.role!=='driver')return;
+  const fns=window._fns,db=window._db,q=fns.query(fns.collection(db,'rides'),fns.where('driverId','==',_user.uid)),snap=await fns.getDocs(q);
+  let pending=[],confirmed=[],pendingRev=0;
+  snap.forEach(d=>{const r={id:d.id,...d.data()};if(r.status==='pending')pending.push(r);if(r.status==='confirmed'){confirmed.push(r);pendingRev+=r.priceFixed||0;}});
+  document.getElementById('d-stat-rides').textContent=snap.size;
+  document.getElementById('d-stat-revenue').textContent='R$ '+pendingRev;
+  document.getElementById('d-stat-pending').textContent=pending.length;
+  document.getElementById('d-sub').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const pList=document.getElementById('d-pending-list');
+  pList.innerHTML=pending.length===0?'<div style="color:var(--text3);font-size:13px;">Nenhuma corrida pendente ✓</div>':'';
+  pending.forEach(r=>{const dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});pList.insertAdjacentHTML('beforeend',`<div style="padding:12px;background:var(--bg3);border-radius:9px;border:1px solid rgba(200,164,90,0.2);margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;">${r.passengerName}</span><span style="font-size:13px;color:var(--gold);">R$ ${r.priceFixed}</span></div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;">${ds} · ${r.origin} → ${r.destination}</div><div style="display:flex;gap:7px;"><button class="btn btn-gold btn-sm" onclick="confirmRide('${r.id}')">✓ Confirmar</button><button class="btn btn-outline btn-sm" onclick="cancelRide('${r.id}')">Recusar</button></div></div>`);});
+  const cList=document.getElementById('d-confirmed-list');
+  cList.innerHTML=confirmed.length===0?'<div style="color:var(--text3);font-size:13px;">Nenhuma confirmada ainda</div>':'';
+  confirmed.slice(0,4).forEach(r=>{const dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});cList.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:var(--green)"></div><div class="ride-info"><div class="ride-route">${r.passengerName}</div><div class="ride-meta">${ds}</div></div><div class="ride-price">R$ ${r.priceFixed}</div></div>`);});
 }
 
-async function confirmRide(rideId) { const fns = window._fns, db = window._db; await fns.updateDoc(fns.doc(db, 'rides', rideId), { status: 'confirmed' }); toast('✓ Corrida confirmada!', 'success'); loadDriverDashboard(); }
-async function cancelRide(rideId) { const fns = window._fns, db = window._db; await fns.updateDoc(fns.doc(db, 'rides', rideId), { status: 'cancelled' }); toast('Corrida recusada.', 'error'); loadDriverDashboard(); }
+async function confirmRide(rideId){const fns=window._fns,db=window._db;await fns.updateDoc(fns.doc(db,'rides',rideId),{status:'confirmed'});toast('✓ Corrida confirmada!','success');loadDriverDashboard();}
+async function cancelRide(rideId){const fns=window._fns,db=window._db;await fns.updateDoc(fns.doc(db,'rides',rideId),{status:'cancelled'});toast('Corrida recusada.','error');loadDriverDashboard();}
 
-async function loadDriverRides() {
-  if (_user.role !== 'driver') return;
-  const fns = window._fns, db = window._db;
-  const q = fns.query(fns.collection(db, 'rides'), fns.where('driverId', '==', _user.uid));
-  const snap = await fns.getDocs(q);
-  const list = document.getElementById('d-rides-list'); if (!list) return;
-  if (snap.empty) { list.innerHTML = '<div style="color:var(--text3);">Nenhuma corrida ainda.</div>'; return; }
-  list.innerHTML = '';
-  snap.forEach(d => { const r = d.data(), dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt), ds = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' · ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), sb = { pending: 'badge-gold', confirmed: 'badge-green', completed: 'badge-muted', cancelled: 'badge-red' }[r.status] || 'badge-muted', sl = { pending: 'Aguardando', confirmed: 'Confirmada', completed: 'Concluída', cancelled: 'Cancelada' }[r.status] || r.status; list.insertAdjacentHTML('beforeend', `<div class="ride-item"><div class="ride-dot" style="background:${r.status === 'confirmed' ? 'var(--green)' : 'var(--text3)'}"></div><div class="ride-info"><div class="ride-route">${r.passengerName} · ${r.origin} → ${r.destination}</div><div class="ride-meta">${ds} · ${r.serviceType}</div></div><div style="text-align:right;"><div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div><span class="badge ${sb}" style="margin-top:3px;">${sl}</span></div></div>`); });
+async function loadDriverRides(){
+  if(_user.role!=='driver')return;
+  const fns=window._fns,db=window._db,q=fns.query(fns.collection(db,'rides'),fns.where('driverId','==',_user.uid)),snap=await fns.getDocs(q);
+  const list=document.getElementById('d-rides-list');if(!list)return;
+  if(snap.empty){list.innerHTML='<div style="color:var(--text3);">Nenhuma corrida ainda.</div>';return;}
+  list.innerHTML='';
+  snap.forEach(d=>{const r=d.data(),dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),sb={pending:'badge-gold',confirmed:'badge-green',completed:'badge-muted',cancelled:'badge-red'}[r.status]||'badge-muted',sl={pending:'Aguardando',confirmed:'Confirmada',completed:'Concluída',cancelled:'Cancelada'}[r.status]||r.status;list.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:${r.status==='confirmed'?'var(--green)':'var(--text3)'}"></div><div class="ride-info"><div class="ride-route">${r.passengerName} · ${r.origin} → ${r.destination}</div><div class="ride-meta">${ds} · ${r.serviceType}</div></div><div style="text-align:right;"><div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div><span class="badge ${sb}" style="margin-top:3px;">${sl}</span></div></div>`);});
 }
 
-async function loadFinancial() {
-  if (_user.role !== 'driver') return;
-  const fns = window._fns, db = window._db;
-  const q = fns.query(fns.collection(db, 'rides'), fns.where('driverId', '==', _user.uid));
-  const snap = await fns.getDocs(q);
-  let total = 0, paid = 0, pending = 0, rows = [];
-  snap.forEach(d => { const r = { id: d.id, ...d.data() }; if (r.status === 'completed') { total += r.priceFixed || 0; paid++; } if (r.status === 'confirmed') pending += r.priceFixed || 0; rows.push(r); });
-  document.getElementById('f-total').textContent = 'R$ ' + total.toLocaleString('pt-BR');
-  document.getElementById('f-paid').textContent = paid;
-  document.getElementById('f-ticket').textContent = paid > 0 ? 'R$ ' + Math.round(total / paid) : 'R$ 0';
-  document.getElementById('f-pending').textContent = 'R$ ' + pending.toLocaleString('pt-BR');
-  const tx = document.getElementById('f-transactions');
-  if (rows.length === 0) { tx.innerHTML = '<div style="color:var(--text3);">Nenhuma transação ainda.</div>'; return; }
-  tx.innerHTML = '';
-  rows.slice(0, 10).forEach(r => { const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt), ds = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), color = r.status === 'completed' ? 'var(--green)' : r.status === 'cancelled' ? 'var(--red)' : 'var(--text3)', prefix = r.status === 'completed' ? '+' : r.status === 'cancelled' ? '✕' : '~'; tx.insertAdjacentHTML('beforeend', `<div class="ride-item"><div class="ride-dot" style="background:${color}"></div><div class="ride-info"><div class="ride-route">${r.passengerName || '?'} · ${r.origin || ''} → ${r.destination || ''}</div><div class="ride-meta">${ds} · ${r.paymentMethod || '—'}</div></div><div style="font-size:14px;color:${color};">${prefix} R$ ${r.priceFixed || 0}</div></div>`); });
+async function loadFinancial(){
+  if(_user.role!=='driver')return;
+  const fns=window._fns,db=window._db,q=fns.query(fns.collection(db,'rides'),fns.where('driverId','==',_user.uid)),snap=await fns.getDocs(q);
+  let total=0,paid=0,pending=0,rows=[];
+  snap.forEach(d=>{const r={id:d.id,...d.data()};if(r.status==='completed'){total+=r.priceFixed||0;paid++;}if(r.status==='confirmed')pending+=r.priceFixed||0;rows.push(r);});
+  document.getElementById('f-total').textContent='R$ '+total.toLocaleString('pt-BR');
+  document.getElementById('f-paid').textContent=paid;
+  document.getElementById('f-ticket').textContent=paid>0?'R$ '+Math.round(total/paid):'R$ 0';
+  document.getElementById('f-pending').textContent='R$ '+pending.toLocaleString('pt-BR');
+  const tx=document.getElementById('f-transactions');
+  if(rows.length===0){tx.innerHTML='<div style="color:var(--text3);">Nenhuma transação ainda.</div>';return;}
+  tx.innerHTML='';
+  rows.slice(0,10).forEach(r=>{const dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}),color=r.status==='completed'?'var(--green)':r.status==='cancelled'?'var(--red)':'var(--text3)',prefix=r.status==='completed'?'+':r.status==='cancelled'?'✕':'~';tx.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:${color}"></div><div class="ride-info"><div class="ride-route">${r.passengerName||'?'} · ${r.origin||''} → ${r.destination||''}</div><div class="ride-meta">${ds} · ${r.paymentMethod||'—'}</div></div><div style="font-size:14px;color:${color};">${prefix} R$ ${r.priceFixed||0}</div></div>`);});
 }
 
-async function saveProfile() { const fns = window._fns, db = window._db, name = document.getElementById('pp-name').value.trim(), phone = document.getElementById('pp-phone').value.trim(); await fns.updateDoc(fns.doc(db, 'users', _user.uid), { name, phone }); _user.name = name; _user.phone = phone; document.getElementById('topbar-name').textContent = name; toast('✓ Perfil salvo!', 'success'); }
-async function saveDriverProfile() { const fns = window._fns, db = window._db, name = document.getElementById('dp-name').value.trim(), car = document.getElementById('dp-car').value.trim(), plate = document.getElementById('dp-plate').value.trim(), bio = document.getElementById('dp-bio').value.trim(); await fns.updateDoc(fns.doc(db, 'users', _user.uid), { name, car, plate, bio }); _user.name = name; _user.car = car; _user.plate = plate; _user.bio = bio; document.getElementById('topbar-name').textContent = name; toast('✓ Perfil salvo!', 'success'); }
+async function saveProfile(){const fns=window._fns,db=window._db,name=document.getElementById('pp-name').value.trim(),phone=document.getElementById('pp-phone').value.trim();await fns.updateDoc(fns.doc(db,'users',_user.uid),{name,phone});_user.name=name;_user.phone=phone;document.getElementById('topbar-name').textContent=name;toast('✓ Perfil salvo!','success');}
+async function saveDriverProfile(){const fns=window._fns,db=window._db,name=document.getElementById('dp-name').value.trim(),car=document.getElementById('dp-car').value.trim(),plate=document.getElementById('dp-plate').value.trim(),bio=document.getElementById('dp-bio').value.trim();await fns.updateDoc(fns.doc(db,'users',_user.uid),{name,car,plate,bio});_user.name=name;_user.car=car;_user.plate=plate;_user.bio=bio;document.getElementById('topbar-name').textContent=name;toast('✓ Perfil salvo!','success');}
 
-function updatePrice() { document.getElementById('price-show').textContent = 'R$ ' + document.getElementById('s-type').value; }
-function selPay(m, el) { _selectedPayMethod = m; document.querySelectorAll('.pay-opt').forEach(e => e.classList.remove('sel')); el.classList.add('sel'); }
+function updatePrice(){document.getElementById('price-show').textContent='R$ '+document.getElementById('s-type').value;}
+function selPay(m,el){_selectedPayMethod=m;document.querySelectorAll('.pay-opt').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');}
 
-const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const DAYS = ['D','S','T','Q','Q','S','S'];
-
-function buildCalendar(gridId, titleId) {
-  const grid = document.getElementById(gridId), title = document.getElementById(titleId); if (!grid) return;
-  if (title) title.textContent = MONTHS[_calMonth] + ' ' + _calYear;
-  const today = new Date(), firstDay = new Date(_calYear, _calMonth, 1).getDay(), daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
-  let html = DAYS.map(d => `<div class="cal-day-label">${d}</div>`).join('');
-  const prevDays = new Date(_calYear, _calMonth, 0).getDate();
-  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day other">${prevDays - firstDay + 1 + i}</div>`;
-  for (let d = 1; d <= daysInMonth; d++) { const isToday = d === today.getDate() && _calMonth === today.getMonth() && _calYear === today.getFullYear(), isSel = _selectedDate?.d === d && _selectedDate?.m === _calMonth && _selectedDate?.y === _calYear, cls = ['cal-day', isToday ? 'today' : '', isSel ? 'sel' : ''].filter(Boolean).join(' '); html += `<div class="${cls}" onclick="selectCalDay(${d},this,'${gridId}','${titleId}')">${d}</div>`; }
-  grid.innerHTML = html;
-}
-
-function changeMonth(dir) { _calMonth += dir; if (_calMonth > 11) { _calMonth = 0; _calYear++; } if (_calMonth < 0) { _calMonth = 11; _calYear--; } buildCalendar('cal-grid', 'cal-title'); buildCalendar('d-cal-grid', 'd-cal-title'); }
-function selectCalDay(d, el, gridId, titleId) { _selectedDate = { d, m: _calMonth, y: _calYear }; document.getElementById(gridId).querySelectorAll('.cal-day').forEach(c => c.classList.remove('sel')); el.classList.add('sel'); const tsLabel = document.getElementById('ts-date-label'); if (tsLabel) tsLabel.textContent = `${d} de ${MONTHS[_calMonth]}`; buildTimeSlots(); }
-function buildTimeSlots() { const container = document.getElementById('time-slots'); if (!container) return; const hours = ['07h00','08h30','10h00','12h00','14h00','16h00','18h00','20h00'], occ = [0, 2]; container.innerHTML = hours.map((h, i) => { const isOcc = occ.includes(i); return `<div class="ts${isOcc ? ' occ' : ''}" onclick="${isOcc ? '' : 'selectTs(this)'}"><div class="ts-hour">${h}</div><div class="ts-bar${isOcc ? ' fill' : ''}"></div><div class="ts-lbl">${isOcc ? 'Ocupado' : 'Disponível'}</div></div>`; }).join(''); }
-function selectTs(el) { document.querySelectorAll('.ts').forEach(t => t.classList.remove('sel')); el.classList.add('sel'); const ti = document.getElementById('s-time'); if (ti) ti.value = el.querySelector('.ts-hour').textContent.replace('h', ':'); }
-function initials(name) { if (!name) return '?'; return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
-function toast(msg, type = '') { const t = document.getElementById('toast'); t.textContent = msg; t.className = 'show ' + type; clearTimeout(t._to); t._to = setTimeout(() => t.classList.remove('show'), 3000); }
+const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DAYS=['D','S','T','Q','Q','S','S'];
+function buildCalendar(gridId,titleId){const grid=document.getElementById(gridId),title=document.getElementById(titleId);if(!grid)return;if(title)title.textContent=MONTHS[_calMonth]+' '+_calYear;const today=new Date(),firstDay=new Date(_calYear,_calMonth,1).getDay(),daysInMonth=new Date(_calYear,_calMonth+1,0).getDate();let html=DAYS.map(d=>`<div class="cal-day-label">${d}</div>`).join('');const prevDays=new Date(_calYear,_calMonth,0).getDate();for(let i=0;i<firstDay;i++)html+=`<div class="cal-day other">${prevDays-firstDay+1+i}</div>`;for(let d=1;d<=daysInMonth;d++){const isToday=d===today.getDate()&&_calMonth===today.getMonth()&&_calYear===today.getFullYear(),isSel=_selectedDate?.d===d&&_selectedDate?.m===_calMonth&&_selectedDate?.y===_calYear,cls=['cal-day',isToday?'today':'',isSel?'sel':''].filter(Boolean).join(' ');html+=`<div class="${cls}" onclick="selectCalDay(${d},this,'${gridId}','${titleId}')">${d}</div>`;}grid.innerHTML=html;}
+function changeMonth(dir){_calMonth+=dir;if(_calMonth>11){_calMonth=0;_calYear++;}if(_calMonth<0){_calMonth=11;_calYear--;}buildCalendar('cal-grid','cal-title');buildCalendar('d-cal-grid','d-cal-title');}
+function selectCalDay(d,el,gridId,titleId){_selectedDate={d,m:_calMonth,y:_calYear};document.getElementById(gridId).querySelectorAll('.cal-day').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');const tsLabel=document.getElementById('ts-date-label');if(tsLabel)tsLabel.textContent=`${d} de ${MONTHS[_calMonth]}`;buildTimeSlots();}
+function buildTimeSlots(){const container=document.getElementById('time-slots');if(!container)return;const hours=['07h00','08h30','10h00','12h00','14h00','16h00','18h00','20h00'],occ=[0,2];container.innerHTML=hours.map((h,i)=>{const isOcc=occ.includes(i);return`<div class="ts${isOcc?' occ':''}" onclick="${isOcc?'':'selectTs(this)'}"><div class="ts-hour">${h}</div><div class="ts-bar${isOcc?' fill':''}"></div><div class="ts-lbl">${isOcc?'Ocupado':'Disponível'}</div></div>`;}).join('');}
+function selectTs(el){document.querySelectorAll('.ts').forEach(t=>t.classList.remove('sel'));el.classList.add('sel');const ti=document.getElementById('s-time');if(ti)ti.value=el.querySelector('.ts-hour').textContent.replace('h',':');}
+function initials(name){if(!name)return'?';return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),3000);}
 </script>
 </body>
 </html>
