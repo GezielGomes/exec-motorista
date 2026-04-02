@@ -12,7 +12,6 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-// ── FIREBASE CONFIG ──
 const firebaseConfig = {
   apiKey: "AIzaSyDknFJaeeHzH0irKY69JjuIQBXhAJ8LoLI",
   authDomain: "exec-motorista.firebaseapp.com",
@@ -23,219 +22,104 @@ const firebaseConfig = {
   measurementId: "G-0NK50VL8BS"
 };
 
-// ── INIT ──
-let app, auth, db;
 try {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
   window._fb = { auth, db, updateProfile, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, getDocs, where };
   window._fbReady = true;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        window._currentUser = snap.exists() ? { uid: user.uid, ...snap.data() } : null;
+      } catch(e) {
+        window._currentUser = null;
+      }
+    } else {
+      window._currentUser = null;
+    }
+    window.dispatchEvent(new CustomEvent('userReady', { detail: window._currentUser }));
+  });
+
 } catch(e) {
   window._fbReady = false;
   window._fbError = e.message;
+  window.dispatchEvent(new CustomEvent('userReady', { detail: null }));
 }
-
-// ── AUTH STATE LISTENER ──
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    if (snap.exists()) {
-      window._currentUser = { uid: user.uid, ...snap.data() };
-      window._authReady = true;
-      window.dispatchEvent(new CustomEvent('userReady', { detail: window._currentUser }));
-    } else {
-      window._authReady = false;
-    }
-  } else {
-    window._currentUser = null;
-    window._authReady = false;
-    window.dispatchEvent(new CustomEvent('userReady', { detail: null }));
-  }
-});
 </script>
 
 <style>
   :root {
-    --bg: #080809;
-    --bg2: #0f0f12;
-    --bg3: #161619;
-    --bg4: #1e1e23;
-    --border: rgba(255,255,255,0.06);
-    --border2: rgba(255,255,255,0.11);
-    --gold: #c8a45a;
-    --gold2: #e5c882;
-    --gold-dim: rgba(200,164,90,0.10);
-    --gold-dim2: rgba(200,164,90,0.18);
-    --text: #edeae4;
-    --text2: #928d86;
-    --text3: #524f4a;
-    --green: #52b788;
-    --green-dim: rgba(82,183,136,0.10);
-    --red: #e05252;
-    --red-dim: rgba(224,82,82,0.10);
-    --blue: #5a8fe0;
-    --blue-dim: rgba(90,143,224,0.10);
-    --radius: 14px;
-    --radius-sm: 9px;
+    --bg: #080809; --bg2: #0f0f12; --bg3: #161619; --bg4: #1e1e23;
+    --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.11);
+    --gold: #c8a45a; --gold2: #e5c882;
+    --gold-dim: rgba(200,164,90,0.10); --gold-dim2: rgba(200,164,90,0.18);
+    --text: #edeae4; --text2: #928d86; --text3: #524f4a;
+    --green: #52b788; --green-dim: rgba(82,183,136,0.10);
+    --red: #e05252; --red-dim: rgba(224,82,82,0.10);
+    --blue: #5a8fe0; --blue-dim: rgba(90,143,224,0.10);
+    --radius: 14px; --radius-sm: 9px;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 300; min-height: 100vh; overflow: hidden; }
+  body::after { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity:0.025; pointer-events:none; z-index:9999; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-    min-height: 100vh;
-    overflow: hidden;
-  }
+  #loading { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:9998; transition:opacity 0.3s; }
+  #loading.hide { opacity:0; pointer-events:none; }
+  .loading-logo { font-family:'DM Serif Display',serif; font-size:32px; letter-spacing:0.18em; color:var(--gold); }
+  .loading-spinner { width:28px; height:28px; border:2px solid var(--border2); border-top-color:var(--gold); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
 
-  /* grain */
-  body::after {
-    content:''; position:fixed; inset:0;
-    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity:0.025; pointer-events:none; z-index:9999;
-  }
-
-  /* ── SCREENS ── */
   .screen { display:none; width:100vw; height:100vh; }
   .screen.active { display:flex; }
 
-  /* ───────────────────────────
-     AUTH SCREEN
-  ─────────────────────────── */
-  #screen-auth {
-    align-items:center; justify-content:center;
-    flex-direction:column;
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(200,164,90,0.07) 0%, transparent 70%);
-  }
-  .auth-card {
-    width: 400px;
-    background: var(--bg2);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius);
-    padding: 36px 32px;
-  }
-  .auth-logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 28px; letter-spacing: 0.18em;
-    color: var(--gold); text-align:center;
-    margin-bottom: 6px;
-  }
-  .auth-tagline {
-    text-align:center; font-size:12px; color:var(--text3);
-    margin-bottom: 28px; letter-spacing:0.06em;
-  }
-  .auth-tabs {
-    display:flex; background:var(--bg3);
-    border-radius:999px; padding:3px;
-    margin-bottom:24px;
-  }
-  .auth-tab {
-    flex:1; padding:7px; border-radius:999px;
-    border:none; background:transparent;
-    font-family:'DM Sans',sans-serif; font-size:12px;
-    color:var(--text3); cursor:pointer; transition:all 0.2s;
-    letter-spacing:0.04em;
-  }
+  #screen-auth { align-items:center; justify-content:center; flex-direction:column; background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(200,164,90,0.07) 0%, transparent 70%); }
+  .auth-card { width:400px; background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius); padding:36px 32px; }
+  .auth-logo { font-family:'DM Serif Display',serif; font-size:28px; letter-spacing:0.18em; color:var(--gold); text-align:center; margin-bottom:6px; }
+  .auth-tagline { text-align:center; font-size:12px; color:var(--text3); margin-bottom:28px; letter-spacing:0.06em; }
+  .auth-tabs { display:flex; background:var(--bg3); border-radius:999px; padding:3px; margin-bottom:24px; }
+  .auth-tab { flex:1; padding:7px; border-radius:999px; border:none; background:transparent; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--text3); cursor:pointer; transition:all 0.2s; letter-spacing:0.04em; }
   .auth-tab.active { background:var(--gold); color:#080809; font-weight:500; }
-
-  .role-selector {
-    display:grid; grid-template-columns:1fr 1fr; gap:8px;
-    margin-bottom:20px;
-  }
-  .role-opt {
-    padding:14px 10px; border-radius:var(--radius-sm);
-    border:1px solid var(--border2);
-    background:var(--bg3); cursor:pointer;
-    text-align:center; transition:all 0.2s;
-  }
+  .role-selector { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px; }
+  .role-opt { padding:14px 10px; border-radius:var(--radius-sm); border:1px solid var(--border2); background:var(--bg3); cursor:pointer; text-align:center; transition:all 0.2s; }
   .role-opt:hover { border-color:var(--gold); }
   .role-opt.selected { border-color:var(--gold); background:var(--gold-dim); }
   .role-opt-icon { font-size:22px; margin-bottom:6px; }
   .role-opt-label { font-size:12px; color:var(--text2); }
   .role-opt.selected .role-opt-label { color:var(--gold); }
-
   .form-group { margin-bottom:14px; }
   .form-label { display:block; font-size:10px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
-  .form-input {
-    width:100%; background:var(--bg3);
-    border:1px solid var(--border2); border-radius:var(--radius-sm);
-    color:var(--text); font-family:'DM Sans',sans-serif;
-    font-size:13px; font-weight:300; padding:10px 14px;
-    outline:none; transition:border-color 0.15s;
-  }
+  .form-input { width:100%; background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:300; padding:10px 14px; outline:none; transition:border-color 0.15s; }
   .form-input:focus { border-color:var(--gold); }
   .form-input::placeholder { color:var(--text3); }
-
-  .btn-primary {
-    width:100%; padding:12px; border-radius:var(--radius-sm);
-    background:var(--gold); color:#080809;
-    font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500;
-    border:none; cursor:pointer; transition:background 0.15s;
-    letter-spacing:0.03em; margin-top:4px;
-  }
+  .btn-primary { width:100%; padding:12px; border-radius:var(--radius-sm); background:var(--gold); color:#080809; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:background 0.15s; letter-spacing:0.03em; margin-top:4px; }
   .btn-primary:hover { background:var(--gold2); }
   .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
-
-  .auth-error {
-    background:var(--red-dim); border:1px solid rgba(224,82,82,0.2);
-    border-radius:var(--radius-sm); padding:10px 14px;
-    font-size:12px; color:var(--red); margin-bottom:14px;
-    display:none;
-  }
+  .auth-error { background:var(--red-dim); border:1px solid rgba(224,82,82,0.2); border-radius:var(--radius-sm); padding:10px 14px; font-size:12px; color:var(--red); margin-bottom:14px; display:none; }
   .auth-error.show { display:block; }
 
-  /* ───────────────────────────
-     APP SCREEN
-  ─────────────────────────── */
   #screen-app { flex-direction:column; }
-
-  .topbar {
-    height:50px; flex-shrink:0;
-    background:rgba(8,8,9,0.95);
-    backdrop-filter:blur(20px);
-    border-bottom:1px solid var(--border);
-    display:flex; align-items:center;
-    justify-content:space-between;
-    padding:0 20px; z-index:100;
-  }
+  .topbar { height:50px; flex-shrink:0; background:rgba(8,8,9,0.95); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 20px; z-index:100; }
   .topbar-logo { font-family:'DM Serif Display',serif; font-size:17px; letter-spacing:0.14em; color:var(--gold); }
   .topbar-user { display:flex; align-items:center; gap:10px; }
   .topbar-name { font-size:12px; color:var(--text2); }
   .topbar-role { font-size:10px; padding:2px 10px; border-radius:999px; }
   .topbar-role.driver { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(200,164,90,0.2); }
   .topbar-role.passenger { background:var(--blue-dim); color:var(--blue); border:1px solid rgba(90,143,224,0.2); }
-  .btn-logout {
-    padding:5px 12px; border-radius:999px;
-    border:1px solid var(--border2); background:transparent;
-    color:var(--text3); font-family:'DM Sans',sans-serif;
-    font-size:11px; cursor:pointer; transition:all 0.15s;
-  }
+  .btn-logout { padding:5px 12px; border-radius:999px; border:1px solid var(--border2); background:transparent; color:var(--text3); font-family:'DM Sans',sans-serif; font-size:11px; cursor:pointer; transition:all 0.15s; }
   .btn-logout:hover { border-color:var(--red); color:var(--red); }
 
-  /* layout */
   .app-body { flex:1; display:flex; overflow:hidden; }
-  .sidebar {
-    width:210px; flex-shrink:0;
-    background:var(--bg2); border-right:1px solid var(--border);
-    display:flex; flex-direction:column; padding:20px 0; overflow-y:auto;
-  }
+  .sidebar { width:210px; flex-shrink:0; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:20px 0; overflow-y:auto; }
   .nav-label { font-size:10px; letter-spacing:0.1em; color:var(--text3); text-transform:uppercase; padding:0 20px; margin-bottom:6px; margin-top:4px; }
-  .nav-item {
-    display:flex; align-items:center; gap:9px;
-    padding:8px 14px; margin:0 8px; border-radius:var(--radius-sm);
-    cursor:pointer; transition:all 0.15s; color:var(--text2);
-    font-size:13px; border:none; background:transparent; width:calc(100% - 16px); text-align:left;
-  }
+  .nav-item { display:flex; align-items:center; gap:9px; padding:8px 14px; margin:0 8px; border-radius:var(--radius-sm); cursor:pointer; transition:all 0.15s; color:var(--text2); font-size:13px; border:none; background:transparent; width:calc(100% - 16px); text-align:left; }
   .nav-item:hover { background:var(--bg3); color:var(--text); }
   .nav-item.active { background:var(--gold-dim); color:var(--gold); }
   .nav-icon { width:16px; text-align:center; font-size:14px; }
-  .nav-badge {
-    margin-left:auto; width:18px; height:18px; border-radius:50%;
-    background:var(--gold); color:#080809; font-size:10px; font-weight:500;
-    display:flex; align-items:center; justify-content:center;
-  }
+  .nav-badge { margin-left:auto; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#080809; font-size:10px; font-weight:500; display:flex; align-items:center; justify-content:center; }
   .nav-divider { height:1px; background:var(--border); margin:10px 16px; }
 
   .main { flex:1; overflow-y:auto; }
@@ -248,17 +132,12 @@ onAuthStateChanged(auth, async (user) => {
   .page-sub { font-size:12px; color:var(--text2); }
   .page-content { padding:22px 28px; }
 
-  /* cards */
   .card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
   .card-title { font-size:10px; letter-spacing:0.08em; color:var(--text3); text-transform:uppercase; margin-bottom:12px; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
   .mb14 { margin-bottom:14px; }
-  .mt14 { margin-top:14px; }
   .flex-between { display:flex; align-items:center; justify-content:space-between; }
-  .divider { height:1px; background:var(--border); margin:14px 0; }
 
-  /* stat */
   .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:18px; }
   .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
   .stat-label { font-size:10px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:8px; }
@@ -266,15 +145,12 @@ onAuthStateChanged(auth, async (user) => {
   .stat-val.gold { color:var(--gold); }
   .stat-delta { font-size:11px; color:var(--green); margin-top:5px; }
 
-  /* badges */
   .badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:500; letter-spacing:0.03em; }
   .badge-gold { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(200,164,90,0.2); }
   .badge-green { background:var(--green-dim); color:var(--green); border:1px solid rgba(82,183,136,0.2); }
   .badge-red { background:var(--red-dim); color:var(--red); border:1px solid rgba(224,82,82,0.2); }
-  .badge-blue { background:var(--blue-dim); color:var(--blue); border:1px solid rgba(90,143,224,0.2); }
   .badge-muted { background:var(--bg3); color:var(--text3); border:1px solid var(--border); }
 
-  /* ride list */
   .ride-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
   .ride-item:last-child { border-bottom:none; }
   .ride-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
@@ -284,13 +160,10 @@ onAuthStateChanged(auth, async (user) => {
   .ride-price { font-size:14px; color:var(--gold); text-align:right; }
   .ride-price small { display:block; font-size:10px; color:var(--text3); font-weight:300; }
 
-  /* avatar */
   .avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; flex-shrink:0; }
   .av-gold { background:var(--gold-dim2); color:var(--gold); }
   .av-blue { background:var(--blue-dim); color:var(--blue); }
-  .av-green { background:var(--green-dim); color:var(--green); }
 
-  /* buttons */
   .btn { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:var(--radius-sm); font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.15s; border:none; }
   .btn-gold { background:var(--gold); color:#080809; }
   .btn-gold:hover { background:var(--gold2); }
@@ -301,20 +174,13 @@ onAuthStateChanged(auth, async (user) => {
   .btn-sm { padding:5px 13px; font-size:11px; }
   .btn-block { width:100%; justify-content:center; }
 
-  /* form */
   .f-group { margin-bottom:13px; }
   .f-label { display:block; font-size:10px; color:var(--text3); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:6px; }
-  .f-input, .f-select, .f-textarea {
-    width:100%; background:var(--bg3); border:1px solid var(--border2);
-    border-radius:var(--radius-sm); color:var(--text);
-    font-family:'DM Sans',sans-serif; font-size:13px; font-weight:300;
-    padding:9px 13px; outline:none; transition:border-color 0.15s;
-  }
+  .f-input, .f-select, .f-textarea { width:100%; background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:300; padding:9px 13px; outline:none; transition:border-color 0.15s; }
   .f-input:focus, .f-select:focus, .f-textarea:focus { border-color:var(--gold); }
   .f-select option { background:var(--bg3); }
   .f-textarea { resize:vertical; min-height:76px; }
 
-  /* ── CHAT ── */
   .chat-wrap { display:flex; height:calc(100vh - 50px); }
   .chat-list { width:270px; flex-shrink:0; border-right:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; }
   .chat-list-header { padding:16px 18px 10px; border-bottom:1px solid var(--border); font-size:10px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; }
@@ -324,16 +190,12 @@ onAuthStateChanged(auth, async (user) => {
   .chat-item-info { flex:1; min-width:0; }
   .chat-item-name { font-size:13px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .chat-item-prev { font-size:11px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .chat-item-time { font-size:10px; color:var(--text3); flex-shrink:0; }
-  .unread-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); flex-shrink:0; }
-
   .chat-main { flex:1; display:flex; flex-direction:column; }
   .chat-header { padding:12px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
   .chat-header-info { flex:1; }
   .chat-header-name { font-size:14px; }
   .chat-header-status { font-size:11px; color:var(--green); }
   .chat-header-status.offline { color:var(--text3); }
-
   .messages { flex:1; overflow-y:auto; padding:18px 22px; display:flex; flex-direction:column; gap:10px; }
   .msg { display:flex; gap:8px; }
   .msg.sent { flex-direction:row-reverse; }
@@ -344,44 +206,21 @@ onAuthStateChanged(auth, async (user) => {
   .msg-time { font-size:10px; color:var(--text3); align-self:flex-end; margin-bottom:1px; }
   .msg-system { text-align:center; font-size:11px; color:var(--text3); padding:4px 0; }
   .auto-tag { font-size:9px; color:var(--green); margin-top:3px; letter-spacing:0.04em; }
-
   .chat-input-area { padding:12px 22px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center; }
   .chat-input { flex:1; background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:300; padding:9px 13px; outline:none; transition:border-color 0.15s; }
   .chat-input:focus { border-color:var(--gold); }
-
-  /* auto-reply toggle */
-  .auto-toggle-bar {
-    padding:10px 22px; background:var(--bg2);
-    border-bottom:1px solid var(--border);
-    display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text2);
-  }
-  .toggle-track {
-    position:relative; width:36px; height:20px;
-    background:var(--bg4); border-radius:999px;
-    border:1px solid var(--border2); cursor:pointer;
-    transition:background 0.2s; flex-shrink:0;
-  }
+  .auto-toggle-bar { padding:10px 22px; background:var(--bg2); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text2); }
+  .toggle-track { position:relative; width:36px; height:20px; background:var(--bg4); border-radius:999px; border:1px solid var(--border2); cursor:pointer; transition:background 0.2s; flex-shrink:0; }
   .toggle-track.on { background:var(--green); border-color:var(--green); }
-  .toggle-thumb {
-    position:absolute; top:2px; left:2px;
-    width:14px; height:14px; border-radius:50%;
-    background:#fff; transition:transform 0.2s;
-  }
+  .toggle-thumb { position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; transition:transform 0.2s; }
   .toggle-track.on .toggle-thumb { transform:translateX(16px); }
   .auto-label { flex:1; }
   .auto-status { font-size:11px; font-weight:500; }
   .auto-status.on { color:var(--green); }
   .auto-status.off { color:var(--text3); }
-
-  /* empty state */
-  .empty-chat {
-    flex:1; display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    color:var(--text3); gap:10px;
-  }
+  .empty-chat { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text3); gap:10px; }
   .empty-icon { font-size:36px; opacity:0.3; }
 
-  /* schedule */
   .schedule-wrap { display:grid; grid-template-columns:1fr 360px; gap:18px; }
   .cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   .cal-month { font-family:'DM Serif Display',serif; font-size:17px; }
@@ -392,9 +231,7 @@ onAuthStateChanged(auth, async (user) => {
   .cal-day.today { color:var(--gold); font-weight:500; }
   .cal-day.today::after { content:''; position:absolute; bottom:4px; width:3px; height:3px; border-radius:50%; background:var(--gold); }
   .cal-day.sel { background:var(--gold); color:#080809; font-weight:500; }
-  .cal-day.has::before { content:''; position:absolute; top:4px; right:4px; width:4px; height:4px; border-radius:50%; background:var(--green); }
   .cal-day.other { color:var(--text3); }
-
   .time-slots { display:flex; flex-direction:column; gap:5px; margin-top:14px; }
   .ts { display:flex; align-items:center; gap:10px; padding:9px 13px; border-radius:var(--radius-sm); background:var(--bg3); border:1px solid var(--border); cursor:pointer; transition:all 0.15s; }
   .ts:hover:not(.occ) { border-color:var(--gold); }
@@ -405,118 +242,52 @@ onAuthStateChanged(auth, async (user) => {
   .ts-bar.fill { background:var(--gold); }
   .ts-lbl { font-size:10px; color:var(--text3); }
 
-  /* financial chart */
-  .fin-chart { height:110px; display:flex; align-items:flex-end; gap:5px; margin:14px 0 6px; }
-  .fin-bar-w { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
-  .fin-bar { width:100%; border-radius:3px 3px 0 0; background:var(--gold-dim2); cursor:pointer; transition:background 0.15s; }
-  .fin-bar:hover, .fin-bar.cur { background:var(--gold); }
-  .fin-lbl { font-size:9px; color:var(--text3); }
-
-  /* loading */
-  .loading-screen {
-    position:fixed; inset:0; background:var(--bg);
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:14px; z-index:9998;
-  }
-  .loading-logo { font-family:'DM Serif Display',serif; font-size:32px; letter-spacing:0.18em; color:var(--gold); }
-  .loading-spinner {
-    width:28px; height:28px; border:2px solid var(--border2);
-    border-top-color:var(--gold); border-radius:50%;
-    animation:spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform:rotate(360deg); } }
-
-  /* toast */
-  #toast {
-    position:fixed; bottom:22px; right:22px;
-    background:var(--bg3); border:1px solid var(--border2);
-    border-radius:var(--radius); padding:11px 16px;
-    font-size:12px; color:var(--text);
-    transform:translateY(70px); opacity:0;
-    transition:all 0.28s; z-index:9997; max-width:280px;
-  }
+  #toast { position:fixed; bottom:22px; right:22px; background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius); padding:11px 16px; font-size:12px; color:var(--text); transform:translateY(70px); opacity:0; transition:all 0.28s; z-index:9997; max-width:280px; }
   #toast.show { transform:translateY(0); opacity:1; }
   #toast.success { border-color:rgba(82,183,136,0.3); }
   #toast.error { border-color:rgba(224,82,82,0.3); }
-
   ::-webkit-scrollbar { width:3px; }
   ::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
 </style>
 </head>
 <body>
 
-<!-- LOADING -->
-<div class="loading-screen" id="loading">
+<div id="loading">
   <div class="loading-logo">EXEC</div>
   <div class="loading-spinner"></div>
 </div>
 
-<!-- ══════════════════════════════
-     AUTH SCREEN
-══════════════════════════════ -->
 <div class="screen" id="screen-auth">
   <div class="auth-card">
     <div class="auth-logo">EXEC</div>
     <div class="auth-tagline">Motorista Executivo Individual</div>
-
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="switchTab('login')">Entrar</button>
       <button class="auth-tab" onclick="switchTab('register')">Criar conta</button>
     </div>
-
     <div id="auth-error" class="auth-error"></div>
-
-    <!-- LOGIN -->
     <div id="tab-login">
-      <div class="form-group">
-        <label class="form-label">E-mail</label>
-        <input class="form-input" id="l-email" type="email" placeholder="seu@email.com" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Senha</label>
-        <input class="form-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
+      <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="l-email" type="email" placeholder="seu@email.com" autocomplete="email"></div>
+      <div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
     </div>
-
-    <!-- REGISTER -->
     <div id="tab-register" style="display:none;">
       <div class="form-group">
         <label class="form-label">Você é</label>
         <div class="role-selector">
-          <div class="role-opt selected" id="role-passenger" onclick="selectRole('passenger')">
-            <div class="role-opt-icon">🧳</div>
-            <div class="role-opt-label">Passageiro</div>
-          </div>
-          <div class="role-opt" id="role-driver" onclick="selectRole('driver')">
-            <div class="role-opt-icon">🚗</div>
-            <div class="role-opt-label">Motorista</div>
-          </div>
+          <div class="role-opt selected" id="role-passenger" onclick="selectRole('passenger')"><div class="role-opt-icon">🧳</div><div class="role-opt-label">Passageiro</div></div>
+          <div class="role-opt" id="role-driver" onclick="selectRole('driver')"><div class="role-opt-icon">🚗</div><div class="role-opt-label">Motorista</div></div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Nome completo</label>
-        <input class="form-input" id="r-name" type="text" placeholder="Seu nome">
-      </div>
-      <div class="form-group">
-        <label class="form-label">E-mail</label>
-        <input class="form-input" id="r-email" type="email" placeholder="seu@email.com" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Senha</label>
-        <input class="form-input" id="r-pass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()">
-      </div>
+      <div class="form-group"><label class="form-label">Nome completo</label><input class="form-input" id="r-name" type="text" placeholder="Seu nome"></div>
+      <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="r-email" type="email" placeholder="seu@email.com" autocomplete="email"></div>
+      <div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="r-pass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"></div>
       <button class="btn-primary" id="btn-register" onclick="doRegister()">Criar conta</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════
-     APP SCREEN
-══════════════════════════════ -->
 <div class="screen" id="screen-app">
-
-  <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-logo">EXEC</div>
     <div class="topbar-user">
@@ -525,10 +296,7 @@ onAuthStateChanged(auth, async (user) => {
       <button class="btn-logout" onclick="doLogout()">Sair</button>
     </div>
   </div>
-
   <div class="app-body">
-
-    <!-- SIDEBAR PASSENGER -->
     <div class="sidebar" id="sb-passenger" style="display:none;">
       <div class="nav-label">Menu</div>
       <button class="nav-item active" onclick="nav('p-home',this)"><span class="nav-icon">⬡</span>Início</button>
@@ -538,8 +306,6 @@ onAuthStateChanged(auth, async (user) => {
       <div class="nav-divider"></div>
       <button class="nav-item" onclick="nav('p-profile',this)"><span class="nav-icon">◯</span>Perfil</button>
     </div>
-
-    <!-- SIDEBAR DRIVER -->
     <div class="sidebar" id="sb-driver" style="display:none;">
       <div class="nav-label">Painel</div>
       <button class="nav-item active" onclick="nav('d-home',this)"><span class="nav-icon">⬡</span>Dashboard</button>
@@ -550,42 +316,18 @@ onAuthStateChanged(auth, async (user) => {
       <div class="nav-divider"></div>
       <button class="nav-item" onclick="nav('d-settings',this)"><span class="nav-icon">⚙</span>Configurações</button>
     </div>
-
-    <!-- MAIN -->
     <div class="main" id="main">
-
-      <!-- ── PASSENGER HOME ── -->
       <div class="view" id="view-p-home">
-        <div class="page-header">
-          <div class="page-title" id="p-greeting">Olá ✦</div>
-          <div class="page-sub">Bem-vindo ao seu painel</div>
-        </div>
+        <div class="page-header"><div class="page-title" id="p-greeting">Olá ✦</div><div class="page-sub">Bem-vindo ao seu painel</div></div>
         <div class="page-content">
           <div class="grid2">
-            <div class="card">
-              <div class="card-title">Próxima corrida</div>
-              <div id="p-next-ride" style="color:var(--text3);font-size:13px;">Nenhuma corrida agendada.<br><br>
-                <button class="btn btn-gold btn-sm" onclick="nav('p-schedule',document.querySelector('#sb-passenger .nav-item:nth-child(2)'))">Agendar agora →</button>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-title">Ações rápidas</div>
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                <button class="btn btn-gold btn-block" onclick="nav('p-schedule',document.querySelector('#sb-passenger .nav-item:nth-child(2)'))">◷ Agendar corrida</button>
-                <button class="btn btn-outline btn-block" onclick="nav('p-chat',document.querySelector('#sb-passenger .nav-item:nth-child(4)'));loadChat()">◎ Falar com motorista</button>
-                <button class="btn btn-outline btn-block" onclick="nav('p-rides',document.querySelector('#sb-passenger .nav-item:nth-child(3)'))">↗ Ver corridas</button>
-              </div>
-            </div>
+            <div class="card"><div class="card-title">Próxima corrida</div><div id="p-next-ride" style="color:var(--text3);font-size:13px;">Nenhuma corrida agendada.<br><br><button class="btn btn-gold btn-sm" onclick="nav('p-schedule',document.querySelector('#sb-passenger .nav-item:nth-child(2)'))">Agendar agora →</button></div></div>
+            <div class="card"><div class="card-title">Ações rápidas</div><div style="display:flex;flex-direction:column;gap:8px;"><button class="btn btn-gold btn-block" onclick="nav('p-schedule',document.querySelector('#sb-passenger .nav-item:nth-child(2)'))">◷ Agendar corrida</button><button class="btn btn-outline btn-block" onclick="nav('p-chat',document.querySelector('#sb-passenger .nav-item:nth-child(4)'));loadChat()">◎ Falar com motorista</button><button class="btn btn-outline btn-block" onclick="nav('p-rides',document.querySelector('#sb-passenger .nav-item:nth-child(3)'))">↗ Ver corridas</button></div></div>
           </div>
         </div>
       </div>
-
-      <!-- ── PASSENGER SCHEDULE ── -->
       <div class="view" id="view-p-schedule">
-        <div class="page-header">
-          <div class="page-title">Agendar corrida</div>
-          <div class="page-sub">Preço fixo · sem surpresas</div>
-        </div>
+        <div class="page-header"><div class="page-title">Agendar corrida</div><div class="page-sub">Preço fixo · sem surpresas</div></div>
         <div class="page-content">
           <div class="schedule-wrap">
             <div>
@@ -593,117 +335,39 @@ onAuthStateChanged(auth, async (user) => {
                 <div class="card-title">Detalhes</div>
                 <div class="f-group"><label class="f-label">Origem</label><input class="f-input" id="s-origin" placeholder="Endereço de partida..."></div>
                 <div class="f-group"><label class="f-label">Destino</label><input class="f-input" id="s-dest" placeholder="Destino..."></div>
-                <div class="grid2">
-                  <div class="f-group"><label class="f-label">Data</label><input class="f-input" id="s-date" type="date"></div>
-                  <div class="f-group"><label class="f-label">Horário</label><input class="f-input" id="s-time" type="time"></div>
-                </div>
-                <div class="f-group">
-                  <label class="f-label">Tipo</label>
-                  <select class="f-select" id="s-type" onchange="updatePrice()">
-                    <option value="180">Transfer Aeroporto — R$ 180</option>
-                    <option value="120">Executivo — R$ 120</option>
-                    <option value="75">Corrida local — R$ 75</option>
-                    <option value="350">Diária — R$ 350</option>
-                  </select>
-                </div>
+                <div class="grid2"><div class="f-group"><label class="f-label">Data</label><input class="f-input" id="s-date" type="date"></div><div class="f-group"><label class="f-label">Horário</label><input class="f-input" id="s-time" type="time"></div></div>
+                <div class="f-group"><label class="f-label">Tipo</label><select class="f-select" id="s-type" onchange="updatePrice()"><option value="180">Transfer Aeroporto — R$ 180</option><option value="120">Executivo — R$ 120</option><option value="75">Corrida local — R$ 75</option><option value="350">Diária — R$ 350</option></select></div>
                 <div class="f-group"><label class="f-label">Observações</label><textarea class="f-textarea" id="s-notes" placeholder="Bagagens, horário do voo..."></textarea></div>
               </div>
               <div class="card">
                 <div class="card-title">Pagamento</div>
-                <div style="display:flex;gap:7px;margin-bottom:14px;">
-                  <div class="pay-opt sel" id="po-pix" onclick="selPay('pix',this)">PIX</div>
-                  <div class="pay-opt" id="po-card" onclick="selPay('card',this)">Cartão</div>
-                  <div class="pay-opt" id="po-cash" onclick="selPay('cash',this)">Dinheiro</div>
-                </div>
+                <div style="display:flex;gap:7px;margin-bottom:14px;"><div class="pay-opt sel" id="po-pix" onclick="selPay('pix',this)">PIX</div><div class="pay-opt" id="po-card" onclick="selPay('card',this)">Cartão</div><div class="pay-opt" id="po-cash" onclick="selPay('cash',this)">Dinheiro</div></div>
                 <style>.pay-opt{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);text-align:center;cursor:pointer;font-size:12px;color:var(--text3);transition:all 0.15s;}.pay-opt:hover{border-color:var(--gold);}.pay-opt.sel{border-color:var(--gold);background:var(--gold-dim);color:var(--gold);}</style>
-                <div class="flex-between" style="margin-bottom:14px;">
-                  <span style="font-size:13px;color:var(--text2);">Total</span>
-                  <span id="price-show" style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--gold);">R$ 180</span>
-                </div>
+                <div class="flex-between" style="margin-bottom:14px;"><span style="font-size:13px;color:var(--text2);">Total</span><span id="price-show" style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--gold);">R$ 180</span></div>
                 <button class="btn btn-gold btn-block" onclick="submitRide()">Confirmar agendamento →</button>
               </div>
             </div>
             <div>
-              <div class="card mb14">
-                <div class="cal-nav">
-                  <button class="btn-ghost" onclick="changeMonth(-1)">‹</button>
-                  <div class="cal-month" id="cal-title">—</div>
-                  <button class="btn-ghost" onclick="changeMonth(1)">›</button>
-                </div>
-                <div class="cal-grid" id="cal-grid"></div>
-              </div>
-              <div class="card">
-                <div class="card-title">Horários · <span id="ts-date-label">selecione um dia</span></div>
-                <div class="time-slots" id="time-slots">
-                  <div style="font-size:12px;color:var(--text3);">Selecione uma data no calendário</div>
-                </div>
-              </div>
+              <div class="card mb14"><div class="cal-nav"><button class="btn-ghost" onclick="changeMonth(-1)">‹</button><div class="cal-month" id="cal-title">—</div><button class="btn-ghost" onclick="changeMonth(1)">›</button></div><div class="cal-grid" id="cal-grid"></div></div>
+              <div class="card"><div class="card-title">Horários · <span id="ts-date-label">selecione um dia</span></div><div class="time-slots" id="time-slots"><div style="font-size:12px;color:var(--text3);">Selecione uma data no calendário</div></div></div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- ── PASSENGER RIDES ── -->
-      <div class="view" id="view-p-rides">
-        <div class="page-header">
-          <div class="page-title">Minhas corridas</div>
-        </div>
-        <div class="page-content">
-          <div class="card">
-            <div id="p-rides-list" style="color:var(--text3);font-size:13px;">Carregando...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── PASSENGER CHAT ── -->
+      <div class="view" id="view-p-rides"><div class="page-header"><div class="page-title">Minhas corridas</div></div><div class="page-content"><div class="card"><div id="p-rides-list" style="color:var(--text3);font-size:13px;">Carregando...</div></div></div></div>
       <div class="view" id="view-p-chat" style="padding:0;">
         <div class="chat-wrap">
-          <div class="chat-list">
-            <div class="chat-list-header">Conversa com motorista</div>
-            <div id="p-chat-thread" class="chat-item active">
-              <div class="avatar av-gold" style="width:34px;height:34px;font-size:12px;" id="p-driver-av">?</div>
-              <div class="chat-item-info">
-                <div class="chat-item-name" id="p-driver-name">Motorista</div>
-                <div class="chat-item-prev" id="p-driver-prev">—</div>
-              </div>
-            </div>
-          </div>
+          <div class="chat-list"><div class="chat-list-header">Conversa com motorista</div><div id="p-chat-thread" class="chat-item active"><div class="avatar av-gold" style="width:34px;height:34px;font-size:12px;" id="p-driver-av">?</div><div class="chat-item-info"><div class="chat-item-name" id="p-driver-name">Motorista</div><div class="chat-item-prev" id="p-driver-prev">—</div></div></div></div>
           <div class="chat-main">
-            <div class="chat-header">
-              <div class="avatar av-gold" style="width:34px;height:34px;font-size:12px;" id="p-ch-av">RC</div>
-              <div class="chat-header-info">
-                <div class="chat-header-name" id="p-ch-name">Motorista</div>
-                <div class="chat-header-status" id="p-ch-status">Carregando...</div>
-              </div>
-            </div>
+            <div class="chat-header"><div class="avatar av-gold" style="width:34px;height:34px;font-size:12px;" id="p-ch-av">RC</div><div class="chat-header-info"><div class="chat-header-name" id="p-ch-name">Motorista</div><div class="chat-header-status" id="p-ch-status">Carregando...</div></div></div>
             <div class="messages" id="p-messages"><div class="msg-system">Conectando ao chat...</div></div>
-            <div class="chat-input-area">
-              <input class="chat-input" id="p-input" placeholder="Digite uma mensagem..." onkeydown="if(event.key==='Enter')sendMessage('passenger')">
-              <button class="btn btn-gold" onclick="sendMessage('passenger')">Enviar</button>
-            </div>
+            <div class="chat-input-area"><input class="chat-input" id="p-input" placeholder="Digite uma mensagem..." onkeydown="if(event.key==='Enter')sendMessage('passenger')"><button class="btn btn-gold" onclick="sendMessage('passenger')">Enviar</button></div>
           </div>
         </div>
       </div>
-
-      <!-- ── PASSENGER PROFILE ── -->
-      <div class="view" id="view-p-profile">
-        <div class="page-header"><div class="page-title">Meu perfil</div></div>
-        <div class="page-content">
-          <div class="card" style="max-width:480px;">
-            <div class="f-group"><label class="f-label">Nome</label><input class="f-input" id="pp-name"></div>
-            <div class="f-group"><label class="f-label">E-mail</label><input class="f-input" id="pp-email" disabled style="opacity:0.5;"></div>
-            <div class="f-group"><label class="f-label">Telefone</label><input class="f-input" id="pp-phone" placeholder="+55 11 9 0000-0000"></div>
-            <button class="btn btn-gold" onclick="saveProfile()">Salvar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── DRIVER HOME ── -->
+      <div class="view" id="view-p-profile"><div class="page-header"><div class="page-title">Meu perfil</div></div><div class="page-content"><div class="card" style="max-width:480px;"><div class="f-group"><label class="f-label">Nome</label><input class="f-input" id="pp-name"></div><div class="f-group"><label class="f-label">E-mail</label><input class="f-input" id="pp-email" disabled style="opacity:0.5;"></div><div class="f-group"><label class="f-label">Telefone</label><input class="f-input" id="pp-phone" placeholder="+55 11 9 0000-0000"></div><button class="btn btn-gold" onclick="saveProfile()">Salvar</button></div></div></div>
       <div class="view" id="view-d-home">
-        <div class="page-header">
-          <div class="page-title" id="d-greeting">Dashboard ✦</div>
-          <div class="page-sub" id="d-sub">Carregando dados...</div>
-        </div>
+        <div class="page-header"><div class="page-title" id="d-greeting">Dashboard ✦</div><div class="page-sub" id="d-sub">Carregando dados...</div></div>
         <div class="page-content">
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-label">Corridas este mês</div><div class="stat-val gold" id="d-stat-rides">—</div><div class="stat-delta">Realizadas</div></div>
@@ -712,892 +376,352 @@ onAuthStateChanged(auth, async (user) => {
             <div class="stat-card"><div class="stat-label">Auto-resposta</div><div class="stat-val" id="d-stat-auto" style="font-size:14px;padding-top:6px;">—</div><div class="stat-delta" style="color:var(--text3);"><a href="#" onclick="nav('d-settings',null);return false;" style="color:var(--gold);text-decoration:none;">configurar →</a></div></div>
           </div>
           <div class="grid2">
-            <div class="card">
-              <div class="card-title">Corridas pendentes — aguardando confirmação</div>
-              <div id="d-pending-list" style="color:var(--text3);font-size:13px;">Nenhuma pendente.</div>
-            </div>
-            <div class="card">
-              <div class="card-title">Próximas corridas confirmadas</div>
-              <div id="d-confirmed-list" style="color:var(--text3);font-size:13px;">Nenhuma confirmada.</div>
-            </div>
+            <div class="card"><div class="card-title">Corridas pendentes</div><div id="d-pending-list" style="color:var(--text3);font-size:13px;">Nenhuma pendente.</div></div>
+            <div class="card"><div class="card-title">Próximas confirmadas</div><div id="d-confirmed-list" style="color:var(--text3);font-size:13px;">Nenhuma confirmada.</div></div>
           </div>
         </div>
       </div>
-
-      <!-- ── DRIVER AGENDA ── -->
-      <div class="view" id="view-d-agenda">
-        <div class="page-header"><div class="page-title">Agenda</div><div class="page-sub">Gerencie sua disponibilidade</div></div>
-        <div class="page-content">
-          <div class="schedule-wrap">
-            <div>
-              <div class="card mb14">
-                <div class="cal-nav">
-                  <button class="btn-ghost" onclick="changeMonth(-1)">‹</button>
-                  <div class="cal-month" id="d-cal-title">—</div>
-                  <button class="btn-ghost" onclick="changeMonth(1)">›</button>
-                </div>
-                <div class="cal-grid" id="d-cal-grid"></div>
-              </div>
-            </div>
-            <div>
-              <div class="card">
-                <div class="card-title">Corridas do dia selecionado</div>
-                <div id="d-day-rides" style="color:var(--text3);font-size:13px;">Selecione um dia no calendário</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── DRIVER RIDES ── -->
-      <div class="view" id="view-d-rides">
-        <div class="page-header"><div class="page-title">Corridas</div></div>
-        <div class="page-content">
-          <div class="card"><div id="d-rides-list" style="color:var(--text3);font-size:13px;">Carregando...</div></div>
-        </div>
-      </div>
-
-      <!-- ── DRIVER CHAT ── -->
+      <div class="view" id="view-d-agenda"><div class="page-header"><div class="page-title">Agenda</div><div class="page-sub">Gerencie sua disponibilidade</div></div><div class="page-content"><div class="schedule-wrap"><div><div class="card mb14"><div class="cal-nav"><button class="btn-ghost" onclick="changeMonth(-1)">‹</button><div class="cal-month" id="d-cal-title">—</div><button class="btn-ghost" onclick="changeMonth(1)">›</button></div><div class="cal-grid" id="d-cal-grid"></div></div></div><div><div class="card"><div class="card-title">Corridas do dia</div><div id="d-day-rides" style="color:var(--text3);font-size:13px;">Selecione um dia</div></div></div></div></div></div>
+      <div class="view" id="view-d-rides"><div class="page-header"><div class="page-title">Corridas</div></div><div class="page-content"><div class="card"><div id="d-rides-list" style="color:var(--text3);font-size:13px;">Carregando...</div></div></div></div>
       <div class="view" id="view-d-chat" style="padding:0;">
         <div class="chat-wrap">
-          <div class="chat-list">
-            <div class="chat-list-header">Passageiros</div>
-            <div id="d-contacts-list">
-              <div style="padding:16px;font-size:12px;color:var(--text3);">Nenhuma conversa ainda</div>
-            </div>
-          </div>
-          <div class="chat-main" id="d-chat-main">
-            <div class="empty-chat">
-              <div class="empty-icon">◎</div>
-              <div>Selecione um passageiro</div>
-            </div>
-          </div>
+          <div class="chat-list"><div class="chat-list-header">Passageiros</div><div id="d-contacts-list"><div style="padding:16px;font-size:12px;color:var(--text3);">Nenhuma conversa ainda</div></div></div>
+          <div class="chat-main" id="d-chat-main"><div class="empty-chat"><div class="empty-icon">◎</div><div>Selecione um passageiro</div></div></div>
         </div>
       </div>
-
-      <!-- ── DRIVER FINANCIAL ── -->
-      <div class="view" id="view-d-financial">
-        <div class="page-header"><div class="page-title">Financeiro</div></div>
-        <div class="page-content">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-label">Receita total</div><div class="stat-val gold" id="f-total">R$ 0</div><div class="stat-delta">Todas as corridas</div></div>
-            <div class="stat-card"><div class="stat-label">Corridas pagas</div><div class="stat-val" id="f-paid">0</div><div class="stat-delta">Concluídas</div></div>
-            <div class="stat-card"><div class="stat-label">Ticket médio</div><div class="stat-val" id="f-ticket">R$ 0</div><div class="stat-delta">Por corrida</div></div>
-            <div class="stat-card"><div class="stat-label">A receber</div><div class="stat-val gold" id="f-pending">R$ 0</div><div class="stat-delta">Agendadas</div></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Transações recentes</div>
-            <div id="f-transactions" style="color:var(--text3);font-size:13px;">Carregando...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── DRIVER SETTINGS ── -->
+      <div class="view" id="view-d-financial"><div class="page-header"><div class="page-title">Financeiro</div></div><div class="page-content"><div class="stat-grid"><div class="stat-card"><div class="stat-label">Receita total</div><div class="stat-val gold" id="f-total">R$ 0</div><div class="stat-delta">Todas as corridas</div></div><div class="stat-card"><div class="stat-label">Corridas pagas</div><div class="stat-val" id="f-paid">0</div><div class="stat-delta">Concluídas</div></div><div class="stat-card"><div class="stat-label">Ticket médio</div><div class="stat-val" id="f-ticket">R$ 0</div><div class="stat-delta">Por corrida</div></div><div class="stat-card"><div class="stat-label">A receber</div><div class="stat-val gold" id="f-pending">R$ 0</div><div class="stat-delta">Agendadas</div></div></div><div class="card"><div class="card-title">Transações recentes</div><div id="f-transactions" style="color:var(--text3);font-size:13px;">Carregando...</div></div></div></div>
       <div class="view" id="view-d-settings">
         <div class="page-header"><div class="page-title">Configurações</div></div>
-        <div class="page-content">
-          <div class="grid2">
-
-            <!-- AUTO REPLY -->
-            <div class="card">
-              <div class="card-title">Respostas automáticas</div>
-              <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:14px;">
-                <div style="flex:1;">
-                  <div style="font-size:13px;margin-bottom:3px;">Auto-resposta global</div>
-                  <div style="font-size:11px;color:var(--text3);">Quando ativa, o app responde automaticamente mensagens dos passageiros</div>
-                </div>
-                <div class="toggle-track" id="auto-toggle" onclick="toggleAutoReply()">
-                  <div class="toggle-thumb"></div>
-                </div>
-              </div>
-              <div id="auto-status-text" style="font-size:12px;color:var(--text3);margin-bottom:16px;">Carregando estado...</div>
-              <div class="card-title">Mensagens automáticas</div>
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
-                  <div style="font-size:10px;color:var(--green);margin-bottom:4px;letter-spacing:0.06em;">CONFIRMAÇÃO</div>
-                  <div style="font-size:12px;color:var(--text2);">"Olá! Sua corrida está confirmada. Estarei no local no horário combinado. ✓"</div>
-                </div>
-                <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
-                  <div style="font-size:10px;color:var(--green);margin-bottom:4px;letter-spacing:0.06em;">A CAMINHO</div>
-                  <div style="font-size:12px;color:var(--text2);">"Estou a caminho! Chego em aproximadamente 10 minutos."</div>
-                </div>
-                <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
-                  <div style="font-size:10px;color:var(--green);margin-bottom:4px;letter-spacing:0.06em;">CHEGADA</div>
-                  <div style="font-size:12px;color:var(--text2);">"Cheguei! Estou aguardando no local combinado."</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- PROFILE -->
-            <div class="card">
-              <div class="card-title">Perfil profissional</div>
-              <div class="f-group"><label class="f-label">Nome</label><input class="f-input" id="dp-name"></div>
-              <div class="f-group"><label class="f-label">Veículo</label><input class="f-input" id="dp-car" placeholder="BMW 320i 2023 · Preto"></div>
-              <div class="f-group"><label class="f-label">Placa</label><input class="f-input" id="dp-plate" placeholder="ABC-1234"></div>
-              <div class="f-group"><label class="f-label">Bio</label><textarea class="f-textarea" id="dp-bio" placeholder="Descreva seu serviço..."></textarea></div>
-              <button class="btn btn-gold" onclick="saveDriverProfile()">Salvar perfil</button>
+        <div class="page-content"><div class="grid2">
+          <div class="card">
+            <div class="card-title">Respostas automáticas</div>
+            <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:14px;"><div style="flex:1;"><div style="font-size:13px;margin-bottom:3px;">Auto-resposta global</div><div style="font-size:11px;color:var(--text3);">Responde automaticamente mensagens dos passageiros</div></div><div class="toggle-track" id="auto-toggle" onclick="toggleAutoReply()"><div class="toggle-thumb"></div></div></div>
+            <div id="auto-status-text" style="font-size:12px;color:var(--text3);margin-bottom:16px;">Carregando...</div>
+            <div class="card-title">Mensagens automáticas</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--green);margin-bottom:4px;">CONFIRMAÇÃO</div><div style="font-size:12px;color:var(--text2);">"Olá! Sua corrida está confirmada. Estarei no local no horário combinado. ✓"</div></div>
+              <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--green);margin-bottom:4px;">A CAMINHO</div><div style="font-size:12px;color:var(--text2);">"Estou a caminho! Chego em aproximadamente 10 minutos."</div></div>
+              <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);"><div style="font-size:10px;color:var(--green);margin-bottom:4px;">CHEGADA</div><div style="font-size:12px;color:var(--text2);">"Cheguei! Estou aguardando no local combinado."</div></div>
             </div>
           </div>
-        </div>
+          <div class="card"><div class="card-title">Perfil profissional</div><div class="f-group"><label class="f-label">Nome</label><input class="f-input" id="dp-name"></div><div class="f-group"><label class="f-label">Veículo</label><input class="f-input" id="dp-car" placeholder="BMW 320i 2023 · Preto"></div><div class="f-group"><label class="f-label">Placa</label><input class="f-input" id="dp-plate" placeholder="ABC-1234"></div><div class="f-group"><label class="f-label">Bio</label><textarea class="f-textarea" id="dp-bio" placeholder="Descreva seu serviço..."></textarea></div><button class="btn btn-gold" onclick="saveDriverProfile()">Salvar perfil</button></div>
+        </div></div>
       </div>
-
-    </div><!-- /main -->
-  </div><!-- /app-body -->
-</div><!-- /screen-app -->
+    </div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
 <script>
-// ── GLOBALS ──
-let _user = null;
-let _chatUnsub = null;
-let _selectedPayMethod = 'pix';
-let _calYear = new Date().getFullYear();
-let _calMonth = new Date().getMonth();
-let _selectedDate = null;
-let _autoReplyOn = false;
-let _currentDriverContact = null;
-let _driverInfo = null;
+let _user=null,_chatUnsub=null,_selectedPayMethod='pix',_calYear=new Date().getFullYear(),_calMonth=new Date().getMonth(),_selectedDate=null,_autoReplyOn=false,_currentDriverContact=null,_driverInfo=null;
 
-// ── WAIT FOR FIREBASE ──
-function waitForFb(cb) {
-  if (window._fbReady !== undefined) { cb(window._fbReady); return; }
-  let tries = 0;
-  const iv = setInterval(() => {
-    tries++;
-    if (window._fbReady !== undefined) { clearInterval(iv); cb(window._fbReady); }
-    if (tries > 40) { clearInterval(iv); cb(false); }
-  }, 100);
+function hideLoading(){
+  const el=document.getElementById('loading');
+  if(!el)return;
+  el.classList.add('hide');
+  setTimeout(()=>el.style.display='none',350);
 }
 
-// ── INIT ──
-window.addEventListener('load', () => {
-  waitForFb((ready) => {
-    document.getElementById('loading').style.display = 'none';
-    if (!ready) {
-      showScreen('auth');
-      toast('Erro ao conectar com o Firebase', 'error');
-      return;
-    }
-    window.addEventListener('userReady', (e) => {
-      if (e.detail) {
-        _user = e.detail;
-        enterApp();
-      } else {
-        showScreen('auth');
-      }
-    });
-  });
-  const today = new Date().toISOString().split('T')[0];
-  const si = document.getElementById('s-date');
-  if (si) si.value = today;
+// ── Key fix: listen for userReady dispatched by the Firebase module ──
+window.addEventListener('userReady',(e)=>{
+  hideLoading();
+  if(e.detail){ _user=e.detail; enterApp(); }
+  else showScreen('auth');
+});
+
+// Fallback timeout in case Firebase never responds
+setTimeout(()=>{
+  const l=document.getElementById('loading');
+  if(l&&l.style.display!=='none'&&!l.classList.contains('hide')){
+    hideLoading(); showScreen('auth');
+    toast('Tempo esgotado. Verifique sua conexão.','error');
+  }
+},6000);
+
+window.addEventListener('load',()=>{
+  const si=document.getElementById('s-date');
+  if(si) si.value=new Date().toISOString().split('T')[0];
   buildCalendar('cal-grid','cal-title');
   buildCalendar('d-cal-grid','d-cal-title');
 });
 
-// ── SCREENS ──
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');}
+function switchTab(tab){document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));document.getElementById('tab-login').style.display=tab==='login'?'block':'none';document.getElementById('tab-register').style.display=tab==='register'?'block':'none';clearAuthError();}
+let _selectedRole='passenger';
+function selectRole(role){_selectedRole=role;document.getElementById('role-passenger').classList.toggle('selected',role==='passenger');document.getElementById('role-driver').classList.toggle('selected',role==='driver');}
+function showAuthError(msg){const el=document.getElementById('auth-error');el.textContent=msg;el.classList.add('show');}
+function clearAuthError(){document.getElementById('auth-error').classList.remove('show');}
 
-// ── AUTH TABS ──
-function switchTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t,i) => {
-    t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register'));
-  });
-  document.getElementById('tab-login').style.display = tab==='login' ? 'block' : 'none';
-  document.getElementById('tab-register').style.display = tab==='register' ? 'block' : 'none';
+async function doLogin(){
   clearAuthError();
+  const email=document.getElementById('l-email').value.trim(),pass=document.getElementById('l-pass').value;
+  if(!email||!pass){showAuthError('Preencha e-mail e senha.');return;}
+  const btn=document.getElementById('btn-login');btn.disabled=true;btn.textContent='Entrando...';
+  try{await window._fb.signInWithEmailAndPassword(window._fb.auth,email,pass);}
+  catch(e){showAuthError(authMsg(e.code));btn.disabled=false;btn.textContent='Entrar';}
 }
 
-let _selectedRole = 'passenger';
-function selectRole(role) {
-  _selectedRole = role;
-  document.getElementById('role-passenger').classList.toggle('selected', role==='passenger');
-  document.getElementById('role-driver').classList.toggle('selected', role==='driver');
-}
-
-function showAuthError(msg) {
-  const el = document.getElementById('auth-error');
-  el.textContent = msg; el.classList.add('show');
-}
-function clearAuthError() {
-  document.getElementById('auth-error').classList.remove('show');
-}
-
-// ── LOGIN ──
-async function doLogin() {
+async function doRegister(){
   clearAuthError();
-  const email = document.getElementById('l-email').value.trim();
-  const pass = document.getElementById('l-pass').value;
-  if (!email || !pass) { showAuthError('Preencha e-mail e senha.'); return; }
-  const btn = document.getElementById('btn-login');
-  btn.disabled = true; btn.textContent = 'Entrando...';
-  try {
-    const fb = window._fb;
-    await fb.signInWithEmailAndPassword(fb.auth, email, pass);
-  } catch(e) {
-    showAuthError(authMsg(e.code));
-    btn.disabled = false; btn.textContent = 'Entrar';
-  }
+  const name=document.getElementById('r-name').value.trim(),email=document.getElementById('r-email').value.trim(),pass=document.getElementById('r-pass').value;
+  if(!name||!email||!pass){showAuthError('Preencha todos os campos.');return;}
+  if(pass.length<6){showAuthError('Senha deve ter ao menos 6 caracteres.');return;}
+  const btn=document.getElementById('btn-register');btn.disabled=true;btn.textContent='Criando...';
+  try{
+    const fb=window._fb,cred=await fb.createUserWithEmailAndPassword(fb.auth,email,pass);
+    await fb.updateProfile(cred.user,{displayName:name});
+    const ud={name,email,role:_selectedRole,createdAt:fb.serverTimestamp(),...(_selectedRole==='driver'?{autoReply:false,car:'',plate:'',bio:''}:{})};
+    await fb.setDoc(fb.doc(fb.db,'users',cred.user.uid),ud);
+    _user={uid:cred.user.uid,...ud};enterApp();
+  }catch(e){showAuthError(authMsg(e.code));btn.disabled=false;btn.textContent='Criar conta';}
 }
 
-// ── REGISTER ──
-async function doRegister() {
-  clearAuthError();
-  const name = document.getElementById('r-name').value.trim();
-  const email = document.getElementById('r-email').value.trim();
-  const pass = document.getElementById('r-pass').value;
-  if (!name || !email || !pass) { showAuthError('Preencha todos os campos.'); return; }
-  if (pass.length < 6) { showAuthError('Senha deve ter ao menos 6 caracteres.'); return; }
-  const btn = document.getElementById('btn-register');
-  btn.disabled = true; btn.textContent = 'Criando...';
-  try {
-    const fb = window._fb;
-    const cred = await fb.createUserWithEmailAndPassword(fb.auth, email, pass);
-    await fb.updateProfile(cred.user, { displayName: name });
-    const userData = {
-      name, email, role: _selectedRole,
-      createdAt: fb.serverTimestamp(),
-      ..._selectedRole === 'driver' ? { autoReply: false, car: '', plate: '', bio: '' } : {}
-    };
-    await fb.setDoc(fb.doc(fb.db, 'users', cred.user.uid), userData);
-    _user = { uid: cred.user.uid, ...userData };
-    enterApp();
-  } catch(e) {
-    showAuthError(authMsg(e.code));
-    btn.disabled = false; btn.textContent = 'Criar conta';
-  }
-}
+function authMsg(c){return({'auth/user-not-found':'E-mail não encontrado.','auth/wrong-password':'Senha incorreta.','auth/email-already-in-use':'E-mail já cadastrado.','auth/invalid-email':'E-mail inválido.','auth/weak-password':'Senha muito fraca.','auth/invalid-credential':'E-mail ou senha incorretos.','auth/network-request-failed':'Erro de conexão.'}[c]||'Erro: '+c);}
 
-function authMsg(code) {
-  const msgs = {
-    'auth/user-not-found': 'E-mail não encontrado.',
-    'auth/wrong-password': 'Senha incorreta.',
-    'auth/email-already-in-use': 'E-mail já cadastrado.',
-    'auth/invalid-email': 'E-mail inválido.',
-    'auth/weak-password': 'Senha muito fraca.',
-    'auth/invalid-credential': 'E-mail ou senha incorretos.',
-    'auth/network-request-failed': 'Erro de conexão.',
-  };
-  return msgs[code] || 'Erro: ' + code;
-}
+async function doLogout(){if(_chatUnsub){_chatUnsub();_chatUnsub=null;}await window._fb.signOut(window._fb.auth);_user=null;_driverInfo=null;showScreen('auth');}
 
-// ── LOGOUT ──
-async function doLogout() {
-  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
-  await window._fb.signOut(window._fb.auth);
-  _user = null; _driverInfo = null;
-  showScreen('auth');
-}
-
-// ── ENTER APP ──
-function enterApp() {
+function enterApp(){
   showScreen('app');
-  const role = _user.role;
-  document.getElementById('topbar-name').textContent = _user.name || _user.email;
-  const roleEl = document.getElementById('topbar-role');
-  roleEl.textContent = role === 'driver' ? 'Motorista' : 'Passageiro';
-  roleEl.className = 'topbar-role ' + role;
-
-  document.getElementById('sb-passenger').style.display = role === 'passenger' ? 'flex' : 'none';
-  document.getElementById('sb-driver').style.display = role === 'driver' ? 'flex' : 'none';
-
-  if (role === 'passenger') {
-    nav('p-home', document.querySelector('#sb-passenger .nav-item'));
-    document.getElementById('p-greeting').textContent = 'Olá, ' + (_user.name||'').split(' ')[0] + ' ✦';
-    document.getElementById('pp-name').value = _user.name || '';
-    document.getElementById('pp-email').value = _user.email || '';
-    document.getElementById('pp-phone').value = _user.phone || '';
-    loadPassengerRides();
-    findDriver();
-  } else {
-    nav('d-home', document.querySelector('#sb-driver .nav-item'));
-    document.getElementById('d-greeting').textContent = 'Olá, ' + (_user.name||'').split(' ')[0] + ' ✦';
-    document.getElementById('dp-name').value = _user.name || '';
-    document.getElementById('dp-car').value = _user.car || '';
-    document.getElementById('dp-plate').value = _user.plate || '';
-    document.getElementById('dp-bio').value = _user.bio || '';
-    _autoReplyOn = _user.autoReply || false;
-    updateAutoUI();
-    loadDriverDashboard();
-    loadDriverContacts();
-    loadFinancial();
+  const role=_user.role;
+  document.getElementById('topbar-name').textContent=_user.name||_user.email;
+  const re=document.getElementById('topbar-role');re.textContent=role==='driver'?'Motorista':'Passageiro';re.className='topbar-role '+role;
+  document.getElementById('sb-passenger').style.display=role==='passenger'?'flex':'none';
+  document.getElementById('sb-driver').style.display=role==='driver'?'flex':'none';
+  if(role==='passenger'){
+    nav('p-home',document.querySelector('#sb-passenger .nav-item'));
+    document.getElementById('p-greeting').textContent='Olá, '+(_user.name||'').split(' ')[0]+' ✦';
+    document.getElementById('pp-name').value=_user.name||'';
+    document.getElementById('pp-email').value=_user.email||'';
+    document.getElementById('pp-phone').value=_user.phone||'';
+    loadPassengerRides();findDriver();
+  }else{
+    nav('d-home',document.querySelector('#sb-driver .nav-item'));
+    document.getElementById('d-greeting').textContent='Olá, '+(_user.name||'').split(' ')[0]+' ✦';
+    document.getElementById('dp-name').value=_user.name||'';
+    document.getElementById('dp-car').value=_user.car||'';
+    document.getElementById('dp-plate').value=_user.plate||'';
+    document.getElementById('dp-bio').value=_user.bio||'';
+    _autoReplyOn=_user.autoReply||false;updateAutoUI();
+    loadDriverDashboard();loadDriverContacts();loadFinancial();
   }
 }
 
-// ── NAV ──
-function nav(viewId, btn) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const v = document.getElementById('view-' + viewId);
-  if (v) v.classList.add('active');
-  if (btn) {
-    const sb = btn.closest('.sidebar');
-    if (sb) sb.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-  if (viewId === 'd-home') loadDriverDashboard();
-  if (viewId === 'd-rides') loadDriverRides();
-  if (viewId === 'p-rides') loadPassengerRides();
-  if (viewId === 'd-financial') loadFinancial();
+function nav(viewId,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const v=document.getElementById('view-'+viewId);if(v)v.classList.add('active');
+  if(btn){const sb=btn.closest('.sidebar');if(sb)sb.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  if(viewId==='d-home')loadDriverDashboard();
+  if(viewId==='d-rides')loadDriverRides();
+  if(viewId==='p-rides')loadPassengerRides();
+  if(viewId==='d-financial')loadFinancial();
 }
 
-// ── FIND DRIVER ──
-async function findDriver() {
-  try {
-    const fb = window._fb;
-    const q = fb.query(fb.collection(fb.db,'users'), fb.where('role','==','driver'));
-    const snap = await fb.getDocs(q);
-    if (!snap.empty) {
-      const d = snap.docs[0];
-      _driverInfo = { uid: d.id, ...d.data() };
-      document.getElementById('p-driver-name').textContent = _driverInfo.name || 'Motorista';
-      document.getElementById('p-ch-name').textContent = _driverInfo.name || 'Motorista';
-      const init = initials(_driverInfo.name);
-      document.getElementById('p-driver-av').textContent = init;
-      document.getElementById('p-ch-av').textContent = init;
-      document.getElementById('p-ch-status').textContent = '● Online';
-    } else {
-      document.getElementById('p-ch-status').textContent = 'Nenhum motorista cadastrado ainda';
-      document.getElementById('p-ch-status').className = 'chat-header-status offline';
-    }
-  } catch(e) { console.error(e); }
+async function findDriver(){
+  try{
+    const fb=window._fb,q=fb.query(fb.collection(fb.db,'users'),fb.where('role','==','driver')),snap=await fb.getDocs(q);
+    if(!snap.empty){
+      const d=snap.docs[0];_driverInfo={uid:d.id,...d.data()};
+      document.getElementById('p-driver-name').textContent=_driverInfo.name||'Motorista';
+      document.getElementById('p-ch-name').textContent=_driverInfo.name||'Motorista';
+      const init=initials(_driverInfo.name);
+      document.getElementById('p-driver-av').textContent=init;
+      document.getElementById('p-ch-av').textContent=init;
+      document.getElementById('p-ch-status').textContent='● Online';
+    }else{document.getElementById('p-ch-status').textContent='Nenhum motorista cadastrado';document.getElementById('p-ch-status').className='chat-header-status offline';}
+  }catch(e){console.error(e);}
 }
 
-// ── CHAT ──
-function loadChat() {
-  if (_user.role === 'passenger') {
-    if (!_driverInfo) { setTimeout(loadChat, 1000); return; }
-    openChatThread(_driverInfo.uid);
-  }
-}
+function loadChat(){if(_user.role==='passenger'){if(!_driverInfo){setTimeout(loadChat,1000);return;}openChatThread(_driverInfo.uid);}}
 
-function openChatThread(otherUid) {
-  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
-  const fb = window._fb;
-  const ids = [_user.uid, otherUid].sort();
-  const chatId = ids.join('_');
-  const msgsRef = fb.collection(fb.db, 'chats', chatId, 'messages');
-  const q = fb.query(msgsRef, fb.orderBy('createdAt','asc'));
-
-  const container = _user.role === 'passenger'
-    ? document.getElementById('p-messages')
-    : document.getElementById('d-msg-area');
-
-  if (container) container.innerHTML = '';
-
-  _chatUnsub = fb.onSnapshot(q, (snap) => {
-    if (!container) return;
-    container.innerHTML = '';
-    snap.forEach(doc => {
-      const msg = doc.data();
-      renderMessage(container, msg);
-    });
-    container.scrollTop = container.scrollHeight;
-    const badge = _user.role === 'passenger'
-      ? document.getElementById('p-unread')
-      : document.getElementById('d-unread');
-    if (badge) badge.style.display = 'none';
+function openChatThread(otherUid){
+  if(_chatUnsub){_chatUnsub();_chatUnsub=null;}
+  const fb=window._fb,ids=[_user.uid,otherUid].sort(),chatId=ids.join('_');
+  const q=fb.query(fb.collection(fb.db,'chats',chatId,'messages'),fb.orderBy('createdAt','asc'));
+  const container=_user.role==='passenger'?document.getElementById('p-messages'):document.getElementById('d-msg-area');
+  if(container)container.innerHTML='';
+  _chatUnsub=fb.onSnapshot(q,(snap)=>{
+    if(!container)return;
+    container.innerHTML='';
+    snap.forEach(doc=>renderMessage(container,doc.data()));
+    container.scrollTop=container.scrollHeight;
+    const badge=_user.role==='passenger'?document.getElementById('p-unread'):document.getElementById('d-unread');
+    if(badge)badge.style.display='none';
   });
 }
 
-function renderMessage(container, msg) {
-  if (!msg.text) return;
-  const isSelf = msg.senderId === _user.uid;
-  const isAuto = msg.auto === true;
-  const div = document.createElement('div');
-  div.className = 'msg' + (isSelf ? ' sent' : '');
-
-  const avClass = isSelf
-    ? (_user.role === 'driver' ? 'av-gold' : 'av-blue')
-    : (_user.role === 'driver' ? 'av-blue' : 'av-gold');
-  const avInit = isSelf ? initials(_user.name) : initials(isAuto ? 'Auto' : (_driverInfo?.name || '?'));
-
-  const bubbleClass = isSelf ? 'bubble bubble-sent' : (isAuto ? 'bubble bubble-auto' : 'bubble bubble-recv');
-  const ts = msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-  const autoTag = isAuto && !isSelf ? '<div class="auto-tag">⚡ Resposta automática</div>' : '';
-
-  div.innerHTML = `
-    <div class="avatar ${avClass}" style="width:28px;height:28px;font-size:11px;flex-shrink:0;align-self:flex-end;">${avInit}</div>
-    <div>
-      <div class="${bubbleClass}">${msg.text}${autoTag}</div>
-      <div class="msg-time" style="${isSelf?'text-align:right;':''}">${ts}</div>
-    </div>`;
+function renderMessage(container,msg){
+  if(!msg.text)return;
+  const isSelf=msg.senderId===_user.uid,isAuto=msg.auto===true;
+  const div=document.createElement('div');div.className='msg'+(isSelf?' sent':'');
+  const avClass=isSelf?(_user.role==='driver'?'av-gold':'av-blue'):(_user.role==='driver'?'av-blue':'av-gold');
+  const avInit=isSelf?initials(_user.name):initials(isAuto?'Auto':(_driverInfo?.name||'?'));
+  const bubbleClass=isSelf?'bubble bubble-sent':(isAuto?'bubble bubble-auto':'bubble bubble-recv');
+  const ts=msg.createdAt?.toDate?msg.createdAt.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+  const autoTag=isAuto&&!isSelf?'<div class="auto-tag">⚡ Resposta automática</div>':'';
+  div.innerHTML=`<div class="avatar ${avClass}" style="width:28px;height:28px;font-size:11px;flex-shrink:0;align-self:flex-end;">${avInit}</div><div><div class="${bubbleClass}">${msg.text}${autoTag}</div><div class="msg-time" style="${isSelf?'text-align:right;':''}">${ts}</div></div>`;
   container.appendChild(div);
 }
 
-async function sendMessage(role) {
-  const inputId = role === 'passenger' ? 'p-input' : 'd-input-' + _currentDriverContact;
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  const text = input.value.trim();
-  if (!text) return;
-
-  const otherUid = role === 'passenger' ? _driverInfo?.uid : _currentDriverContact;
-  if (!otherUid) { toast('Nenhum motorista encontrado', 'error'); return; }
-
-  const ids = [_user.uid, otherUid].sort();
-  const chatId = ids.join('_');
-
-  const fb = window._fb;
-  await fb.addDoc(fb.collection(fb.db,'chats',chatId,'messages'), {
-    text, senderId: _user.uid,
-    senderName: _user.name,
-    auto: false,
-    createdAt: fb.serverTimestamp()
-  });
-  input.value = '';
-
-  updateChatPreview(chatId, text);
-
-  if (role === 'passenger') {
-    checkAutoReply(chatId, otherUid);
-  }
+async function sendMessage(role){
+  const inputId=role==='passenger'?'p-input':'d-input-'+_currentDriverContact;
+  const input=document.getElementById(inputId);if(!input)return;
+  const text=input.value.trim();if(!text)return;
+  const otherUid=role==='passenger'?_driverInfo?.uid:_currentDriverContact;
+  if(!otherUid){toast('Nenhum motorista encontrado','error');return;}
+  const ids=[_user.uid,otherUid].sort(),chatId=ids.join('_'),fb=window._fb;
+  await fb.addDoc(fb.collection(fb.db,'chats',chatId,'messages'),{text,senderId:_user.uid,senderName:_user.name,auto:false,createdAt:fb.serverTimestamp()});
+  input.value='';updateChatPreview(chatId,text);
+  if(role==='passenger')checkAutoReply(chatId,otherUid);
 }
 
-async function checkAutoReply(chatId, driverUid) {
-  const fb = window._fb;
-  const driverDoc = await fb.getDoc(fb.doc(fb.db,'users',driverUid));
-  if (!driverDoc.exists()) return;
-  const driverData = driverDoc.data();
-  if (!driverData.autoReply) return;
-
-  const replies = [
-    'Olá! Recebi sua mensagem. Estarei no local no horário combinado. ✓',
-    'Confirmado! Pode contar comigo.',
-    'Certo, estou ciente. Qualquer dúvida, estou à disposição.',
-    'Perfeito! Tudo anotado.',
-  ];
-  const reply = replies[Math.floor(Math.random() * replies.length)];
-
-  setTimeout(async () => {
-    await fb.addDoc(fb.collection(fb.db,'chats',chatId,'messages'), {
-      text: reply,
-      senderId: driverUid,
-      senderName: driverData.name,
-      auto: true,
-      createdAt: fb.serverTimestamp()
-    });
-    updateChatPreview(chatId, reply);
-  }, 1200);
+async function checkAutoReply(chatId,driverUid){
+  const fb=window._fb,driverDoc=await fb.getDoc(fb.doc(fb.db,'users',driverUid));
+  if(!driverDoc.exists())return;
+  const dd=driverDoc.data();if(!dd.autoReply)return;
+  const replies=['Olá! Recebi sua mensagem. Estarei no local no horário combinado. ✓','Confirmado! Pode contar comigo.','Certo, estou ciente. Qualquer dúvida, estou à disposição.','Perfeito! Tudo anotado.'];
+  const reply=replies[Math.floor(Math.random()*replies.length)];
+  setTimeout(async()=>{await fb.addDoc(fb.collection(fb.db,'chats',chatId,'messages'),{text:reply,senderId:driverUid,senderName:dd.name,auto:true,createdAt:fb.serverTimestamp()});updateChatPreview(chatId,reply);},1200);
 }
 
-async function updateChatPreview(chatId, text) {
-  const previewEl = document.getElementById('prev-' + chatId);
-  if (previewEl) previewEl.textContent = text;
-}
+async function updateChatPreview(chatId,text){const el=document.getElementById('prev-'+chatId);if(el)el.textContent=text;}
 
-// ── DRIVER CONTACTS ──
-async function loadDriverContacts() {
-  if (_user.role !== 'driver') return;
-  const fb = window._fb;
-  const q = fb.query(fb.collection(fb.db,'users'), fb.where('role','==','passenger'));
-  const snap = await fb.getDocs(q);
-  const list = document.getElementById('d-contacts-list');
-  list.innerHTML = '';
-  if (snap.empty) {
-    list.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text3);">Nenhum passageiro cadastrado</div>';
-    return;
-  }
-  snap.forEach(d => {
-    const p = { uid: d.id, ...d.data() };
-    const ids = [_user.uid, p.uid].sort();
-    const chatId = ids.join('_');
-    const item = document.createElement('div');
-    item.className = 'chat-item';
-    item.id = 'contact-' + p.uid;
-    item.innerHTML = `
-      <div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(p.name)}</div>
-      <div class="chat-item-info">
-        <div class="chat-item-name">${p.name}</div>
-        <div class="chat-item-prev" id="prev-${chatId}">Clique para abrir</div>
-      </div>`;
-    item.onclick = () => openDriverChat(p, chatId, item);
-    list.appendChild(item);
+async function loadDriverContacts(){
+  if(_user.role!=='driver')return;
+  const fb=window._fb,q=fb.query(fb.collection(fb.db,'users'),fb.where('role','==','passenger')),snap=await fb.getDocs(q);
+  const list=document.getElementById('d-contacts-list');list.innerHTML='';
+  if(snap.empty){list.innerHTML='<div style="padding:16px;font-size:12px;color:var(--text3);">Nenhum passageiro cadastrado</div>';return;}
+  snap.forEach(d=>{
+    const p={uid:d.id,...d.data()},ids=[_user.uid,p.uid].sort(),chatId=ids.join('_');
+    const item=document.createElement('div');item.className='chat-item';
+    item.innerHTML=`<div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(p.name)}</div><div class="chat-item-info"><div class="chat-item-name">${p.name}</div><div class="chat-item-prev" id="prev-${chatId}">Clique para abrir</div></div>`;
+    item.onclick=()=>openDriverChat(p,chatId,item);list.appendChild(item);
   });
 }
 
-function openDriverChat(passenger, chatId, itemEl) {
-  _currentDriverContact = passenger.uid;
-  document.querySelectorAll('#d-contacts-list .chat-item').forEach(i => i.classList.remove('active'));
-  itemEl.classList.add('active');
-
-  const main = document.getElementById('d-chat-main');
-  main.innerHTML = `
-    <div class="auto-toggle-bar">
-      <span class="auto-label">Auto-resposta</span>
-      <span class="auto-status ${_autoReplyOn?'on':'off'}" id="at-label">${_autoReplyOn?'● Ativa':'○ Desativada'}</span>
-      <span style="font-size:11px;color:var(--text3);">— configure em <a href="#" onclick="nav('d-settings',null);return false;" style="color:var(--gold);">Configurações</a></span>
-    </div>
-    <div class="chat-header">
-      <div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(passenger.name)}</div>
-      <div class="chat-header-info">
-        <div class="chat-header-name">${passenger.name}</div>
-        <div class="chat-header-status">● Passageiro</div>
-      </div>
-    </div>
-    <div class="messages" id="d-msg-area"></div>
-    <div class="chat-input-area">
-      <input class="chat-input" id="d-input-${passenger.uid}" placeholder="Responder ${passenger.name}..." onkeydown="if(event.key==='Enter')sendMessage('driver')">
-      <button class="btn btn-gold" onclick="sendMessage('driver')">Enviar</button>
-    </div>`;
-
+function openDriverChat(passenger,chatId,itemEl){
+  _currentDriverContact=passenger.uid;
+  document.querySelectorAll('#d-contacts-list .chat-item').forEach(i=>i.classList.remove('active'));itemEl.classList.add('active');
+  const main=document.getElementById('d-chat-main');
+  main.innerHTML=`<div class="auto-toggle-bar"><span class="auto-label">Auto-resposta</span><span class="auto-status ${_autoReplyOn?'on':'off'}" id="at-label">${_autoReplyOn?'● Ativa':'○ Desativada'}</span><span style="font-size:11px;color:var(--text3);">— <a href="#" onclick="nav('d-settings',null);return false;" style="color:var(--gold);">Configurações</a></span></div><div class="chat-header"><div class="avatar av-blue" style="width:34px;height:34px;font-size:12px;">${initials(passenger.name)}</div><div class="chat-header-info"><div class="chat-header-name">${passenger.name}</div><div class="chat-header-status">● Passageiro</div></div></div><div class="messages" id="d-msg-area"></div><div class="chat-input-area"><input class="chat-input" id="d-input-${passenger.uid}" placeholder="Responder ${passenger.name}..." onkeydown="if(event.key==='Enter')sendMessage('driver')"><button class="btn btn-gold" onclick="sendMessage('driver')">Enviar</button></div>`;
   openChatThread(passenger.uid);
 }
 
-// ── AUTO REPLY ──
-async function toggleAutoReply() {
-  _autoReplyOn = !_autoReplyOn;
-  const fb = window._fb;
-  await fb.updateDoc(fb.doc(fb.db,'users',_user.uid), { autoReply: _autoReplyOn });
-  _user.autoReply = _autoReplyOn;
-  updateAutoUI();
-  toast(_autoReplyOn ? '⚡ Auto-resposta ativada' : 'Auto-resposta desativada');
+async function toggleAutoReply(){
+  _autoReplyOn=!_autoReplyOn;const fb=window._fb;
+  await fb.updateDoc(fb.doc(fb.db,'users',_user.uid),{autoReply:_autoReplyOn});
+  _user.autoReply=_autoReplyOn;updateAutoUI();
+  toast(_autoReplyOn?'⚡ Auto-resposta ativada':'Auto-resposta desativada');
 }
 
-function updateAutoUI() {
-  const track = document.getElementById('auto-toggle');
-  const statusText = document.getElementById('auto-status-text');
-  const dStatAuto = document.getElementById('d-stat-auto');
-  const atLabel = document.getElementById('at-label');
-
-  if (track) track.classList.toggle('on', _autoReplyOn);
-  if (statusText) statusText.textContent = _autoReplyOn
-    ? '⚡ Ativa — mensagens recebidas são respondidas automaticamente'
-    : '○ Desativada — apenas você responde manualmente';
-  if (statusText) statusText.style.color = _autoReplyOn ? 'var(--green)' : 'var(--text3)';
-  if (dStatAuto) {
-    dStatAuto.textContent = _autoReplyOn ? '⚡ Ativa' : '○ Off';
-    dStatAuto.style.color = _autoReplyOn ? 'var(--green)' : 'var(--text3)';
-  }
-  if (atLabel) {
-    atLabel.textContent = _autoReplyOn ? '● Ativa' : '○ Desativada';
-    atLabel.className = 'auto-status ' + (_autoReplyOn ? 'on' : 'off');
-  }
+function updateAutoUI(){
+  const track=document.getElementById('auto-toggle'),st=document.getElementById('auto-status-text'),da=document.getElementById('d-stat-auto'),al=document.getElementById('at-label');
+  if(track)track.classList.toggle('on',_autoReplyOn);
+  if(st){st.textContent=_autoReplyOn?'⚡ Ativa — mensagens respondidas automaticamente':'○ Desativada — apenas você responde';st.style.color=_autoReplyOn?'var(--green)':'var(--text3)';}
+  if(da){da.textContent=_autoReplyOn?'⚡ Ativa':'○ Off';da.style.color=_autoReplyOn?'var(--green)':'var(--text3)';}
+  if(al){al.textContent=_autoReplyOn?'● Ativa':'○ Desativada';al.className='auto-status '+(_autoReplyOn?'on':'off');}
 }
 
-// ── RIDES ──
-async function submitRide() {
-  if (!_driverInfo) { toast('Nenhum motorista disponível', 'error'); return; }
-  const origin = document.getElementById('s-origin').value.trim();
-  const dest = document.getElementById('s-dest').value.trim();
-  const date = document.getElementById('s-date').value;
-  const time = document.getElementById('s-time').value;
-  const notes = document.getElementById('s-notes').value.trim();
-  const priceEl = document.getElementById('s-type');
-  const price = parseInt(priceEl.value);
-  const typeLabel = priceEl.options[priceEl.selectedIndex].text.split('—')[0].trim();
-
-  if (!origin || !dest || !date || !time) { toast('Preencha origem, destino, data e horário', 'error'); return; }
-
-  const fb = window._fb;
-  await fb.addDoc(fb.collection(fb.db,'rides'), {
-    passengerId: _user.uid,
-    passengerName: _user.name,
-    driverId: _driverInfo.uid,
-    origin, destination: dest,
-    scheduledAt: new Date(date + 'T' + time),
-    serviceType: typeLabel,
-    priceFixed: price,
-    paymentMethod: _selectedPayMethod,
-    notes,
-    status: 'pending',
-    createdAt: fb.serverTimestamp()
-  });
-
-  toast('✓ Corrida agendada! Aguardando confirmação do motorista.', 'success');
-  nav('p-home', document.querySelector('#sb-passenger .nav-item'));
-  loadPassengerRides();
+async function submitRide(){
+  if(!_driverInfo){toast('Nenhum motorista disponível','error');return;}
+  const origin=document.getElementById('s-origin').value.trim(),dest=document.getElementById('s-dest').value.trim(),date=document.getElementById('s-date').value,time=document.getElementById('s-time').value,notes=document.getElementById('s-notes').value.trim(),priceEl=document.getElementById('s-type'),price=parseInt(priceEl.value),typeLabel=priceEl.options[priceEl.selectedIndex].text.split('—')[0].trim();
+  if(!origin||!dest||!date||!time){toast('Preencha origem, destino, data e horário','error');return;}
+  const fb=window._fb;
+  await fb.addDoc(fb.collection(fb.db,'rides'),{passengerId:_user.uid,passengerName:_user.name,driverId:_driverInfo.uid,origin,destination:dest,scheduledAt:new Date(date+'T'+time),serviceType:typeLabel,priceFixed:price,paymentMethod:_selectedPayMethod,notes,status:'pending',createdAt:fb.serverTimestamp()});
+  toast('✓ Corrida agendada! Aguardando confirmação.','success');
+  nav('p-home',document.querySelector('#sb-passenger .nav-item'));loadPassengerRides();
 }
 
-async function loadPassengerRides() {
-  const fb = window._fb;
-  const q = fb.query(fb.collection(fb.db,'rides'), fb.where('passengerId','==',_user.uid));
-  const snap = await fb.getDocs(q);
-  const list = document.getElementById('p-rides-list');
-  if (!list) return;
-  if (snap.empty) { list.innerHTML = '<div style="color:var(--text3);font-size:13px;">Nenhuma corrida ainda. <a href="#" onclick="nav(\'p-schedule\',null);return false;" style="color:var(--gold);">Agendar agora →</a></div>'; return; }
-  list.innerHTML = '';
-  snap.forEach(d => {
-    const r = d.data();
-    const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt);
-    const dateStr = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) + ' · ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const statusBadge = { pending:'badge-gold', confirmed:'badge-green', completed:'badge-muted', cancelled:'badge-red' }[r.status] || 'badge-muted';
-    const statusLabel = { pending:'Aguardando', confirmed:'Confirmada', completed:'Concluída', cancelled:'Cancelada' }[r.status] || r.status;
-    list.insertAdjacentHTML('beforeend', `
-      <div class="ride-item">
-        <div class="ride-dot" style="background:${r.status==='confirmed'?'var(--green)':'var(--text3)'}"></div>
-        <div class="ride-info">
-          <div class="ride-route">${r.origin} → ${r.destination}</div>
-          <div class="ride-meta">${dateStr} · ${r.serviceType}</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div>
-          <span class="badge ${statusBadge}" style="margin-top:3px;">${statusLabel}</span>
-        </div>
-      </div>`);
-  });
+async function loadPassengerRides(){
+  const fb=window._fb,q=fb.query(fb.collection(fb.db,'rides'),fb.where('passengerId','==',_user.uid)),snap=await fb.getDocs(q);
+  const list=document.getElementById('p-rides-list');if(!list)return;
+  if(snap.empty){list.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhuma corrida ainda. <a href="#" onclick="nav(\'p-schedule\',null);return false;" style="color:var(--gold);">Agendar agora →</a></div>';return;}
+  list.innerHTML='';
+  snap.forEach(d=>{const r=d.data(),dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),sb={pending:'badge-gold',confirmed:'badge-green',completed:'badge-muted',cancelled:'badge-red'}[r.status]||'badge-muted',sl={pending:'Aguardando',confirmed:'Confirmada',completed:'Concluída',cancelled:'Cancelada'}[r.status]||r.status;list.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:${r.status==='confirmed'?'var(--green)':'var(--text3)'}"></div><div class="ride-info"><div class="ride-route">${r.origin} → ${r.destination}</div><div class="ride-meta">${ds} · ${r.serviceType}</div></div><div style="text-align:right;"><div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div><span class="badge ${sb}" style="margin-top:3px;">${sl}</span></div></div>`);});
 }
 
-async function loadDriverDashboard() {
-  if (_user.role !== 'driver') return;
-  const fb = window._fb;
-  const q = fb.query(fb.collection(fb.db,'rides'), fb.where('driverId','==',_user.uid));
-  const snap = await fb.getDocs(q);
-  let pending = [], confirmed = [], pendingRev = 0;
-
-  snap.forEach(d => {
-    const r = { id: d.id, ...d.data() };
-    if (r.status === 'pending') pending.push(r);
-    if (r.status === 'confirmed') { confirmed.push(r); pendingRev += r.priceFixed || 0; }
-  });
-
-  document.getElementById('d-stat-rides').textContent = snap.size;
-  document.getElementById('d-stat-revenue').textContent = 'R$ ' + pendingRev;
-  document.getElementById('d-stat-pending').textContent = pending.length;
-  document.getElementById('d-sub').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
-
-  const pList = document.getElementById('d-pending-list');
-  if (pending.length === 0) {
-    pList.innerHTML = '<div style="color:var(--text3);font-size:13px;">Nenhuma corrida pendente ✓</div>';
-  } else {
-    pList.innerHTML = '';
-    pending.forEach(r => {
-      const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt);
-      const dtStr = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) + ' · ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      pList.insertAdjacentHTML('beforeend', `
-        <div style="padding:12px;background:var(--bg3);border-radius:9px;border:1px solid rgba(200,164,90,0.2);margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-            <span style="font-size:13px;">${r.passengerName}</span>
-            <span style="font-size:13px;color:var(--gold);">R$ ${r.priceFixed}</span>
-          </div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">${dtStr} · ${r.origin} → ${r.destination}</div>
-          <div style="display:flex;gap:7px;">
-            <button class="btn btn-gold btn-sm" onclick="confirmRide('${r.id}')">✓ Confirmar</button>
-            <button class="btn btn-outline btn-sm" onclick="cancelRide('${r.id}')">Recusar</button>
-          </div>
-        </div>`);
-    });
-  }
-
-  const cList = document.getElementById('d-confirmed-list');
-  if (confirmed.length === 0) {
-    cList.innerHTML = '<div style="color:var(--text3);font-size:13px;">Nenhuma confirmada ainda</div>';
-  } else {
-    cList.innerHTML = '';
-    confirmed.slice(0,4).forEach(r => {
-      const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt);
-      const dtStr = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) + ' · ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      cList.insertAdjacentHTML('beforeend', `
-        <div class="ride-item">
-          <div class="ride-dot" style="background:var(--green)"></div>
-          <div class="ride-info">
-            <div class="ride-route">${r.passengerName}</div>
-            <div class="ride-meta">${dtStr}</div>
-          </div>
-          <div class="ride-price">R$ ${r.priceFixed}</div>
-        </div>`);
-    });
-  }
+async function loadDriverDashboard(){
+  if(_user.role!=='driver')return;
+  const fb=window._fb,q=fb.query(fb.collection(fb.db,'rides'),fb.where('driverId','==',_user.uid)),snap=await fb.getDocs(q);
+  let pending=[],confirmed=[],pendingRev=0;
+  snap.forEach(d=>{const r={id:d.id,...d.data()};if(r.status==='pending')pending.push(r);if(r.status==='confirmed'){confirmed.push(r);pendingRev+=r.priceFixed||0;}});
+  document.getElementById('d-stat-rides').textContent=snap.size;
+  document.getElementById('d-stat-revenue').textContent='R$ '+pendingRev;
+  document.getElementById('d-stat-pending').textContent=pending.length;
+  document.getElementById('d-sub').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const pList=document.getElementById('d-pending-list');
+  pList.innerHTML=pending.length===0?'<div style="color:var(--text3);font-size:13px;">Nenhuma corrida pendente ✓</div>':'';
+  pending.forEach(r=>{const dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});pList.insertAdjacentHTML('beforeend',`<div style="padding:12px;background:var(--bg3);border-radius:9px;border:1px solid rgba(200,164,90,0.2);margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;">${r.passengerName}</span><span style="font-size:13px;color:var(--gold);">R$ ${r.priceFixed}</span></div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;">${ds} · ${r.origin} → ${r.destination}</div><div style="display:flex;gap:7px;"><button class="btn btn-gold btn-sm" onclick="confirmRide('${r.id}')">✓ Confirmar</button><button class="btn btn-outline btn-sm" onclick="cancelRide('${r.id}')">Recusar</button></div></div>`);});
+  const cList=document.getElementById('d-confirmed-list');
+  cList.innerHTML=confirmed.length===0?'<div style="color:var(--text3);font-size:13px;">Nenhuma confirmada ainda</div>':'';
+  confirmed.slice(0,4).forEach(r=>{const dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});cList.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:var(--green)"></div><div class="ride-info"><div class="ride-route">${r.passengerName}</div><div class="ride-meta">${ds}</div></div><div class="ride-price">R$ ${r.priceFixed}</div></div>`);});
 }
 
-async function confirmRide(rideId) {
-  const fb = window._fb;
-  await fb.updateDoc(fb.doc(fb.db,'rides',rideId), { status: 'confirmed' });
-  toast('✓ Corrida confirmada!', 'success');
-  loadDriverDashboard();
-}
-async function cancelRide(rideId) {
-  const fb = window._fb;
-  await fb.updateDoc(fb.doc(fb.db,'rides',rideId), { status: 'cancelled' });
-  toast('Corrida recusada.', 'error');
-  loadDriverDashboard();
-}
+async function confirmRide(rideId){const fb=window._fb;await fb.updateDoc(fb.doc(fb.db,'rides',rideId),{status:'confirmed'});toast('✓ Corrida confirmada!','success');loadDriverDashboard();}
+async function cancelRide(rideId){const fb=window._fb;await fb.updateDoc(fb.doc(fb.db,'rides',rideId),{status:'cancelled'});toast('Corrida recusada.','error');loadDriverDashboard();}
 
-async function loadDriverRides() {
-  if (_user.role !== 'driver') return;
-  const fb = window._fb;
-  const q = fb.query(fb.collection(fb.db,'rides'), fb.where('driverId','==',_user.uid));
-  const snap = await fb.getDocs(q);
-  const list = document.getElementById('d-rides-list');
-  if (!list) return;
-  if (snap.empty) { list.innerHTML = '<div style="color:var(--text3);">Nenhuma corrida ainda.</div>'; return; }
-  list.innerHTML = '';
-  snap.forEach(d => {
-    const r = d.data();
-    const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt);
-    const dtStr = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) + ' · ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const sb = { pending:'badge-gold', confirmed:'badge-green', completed:'badge-muted', cancelled:'badge-red' }[r.status]||'badge-muted';
-    const sl = { pending:'Aguardando', confirmed:'Confirmada', completed:'Concluída', cancelled:'Cancelada' }[r.status]||r.status;
-    list.insertAdjacentHTML('beforeend', `
-      <div class="ride-item">
-        <div class="ride-dot" style="background:${r.status==='confirmed'?'var(--green)':'var(--text3)'}"></div>
-        <div class="ride-info">
-          <div class="ride-route">${r.passengerName} · ${r.origin} → ${r.destination}</div>
-          <div class="ride-meta">${dtStr} · ${r.serviceType}</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div>
-          <span class="badge ${sb}" style="margin-top:3px;">${sl}</span>
-        </div>
-      </div>`);
-  });
+async function loadDriverRides(){
+  if(_user.role!=='driver')return;
+  const fb=window._fb,q=fb.query(fb.collection(fb.db,'rides'),fb.where('driverId','==',_user.uid)),snap=await fb.getDocs(q);
+  const list=document.getElementById('d-rides-list');if(!list)return;
+  if(snap.empty){list.innerHTML='<div style="color:var(--text3);">Nenhuma corrida ainda.</div>';return;}
+  list.innerHTML='';
+  snap.forEach(d=>{const r=d.data(),dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),sb={pending:'badge-gold',confirmed:'badge-green',completed:'badge-muted',cancelled:'badge-red'}[r.status]||'badge-muted',sl={pending:'Aguardando',confirmed:'Confirmada',completed:'Concluída',cancelled:'Cancelada'}[r.status]||r.status;list.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:${r.status==='confirmed'?'var(--green)':'var(--text3)'}"></div><div class="ride-info"><div class="ride-route">${r.passengerName} · ${r.origin} → ${r.destination}</div><div class="ride-meta">${ds} · ${r.serviceType}</div></div><div style="text-align:right;"><div class="ride-price">R$ ${r.priceFixed}<small>${r.paymentMethod}</small></div><span class="badge ${sb}" style="margin-top:3px;">${sl}</span></div></div>`);});
 }
 
-async function loadFinancial() {
-  if (_user.role !== 'driver') return;
-  const fb = window._fb;
-  const q = fb.query(fb.collection(fb.db,'rides'), fb.where('driverId','==',_user.uid));
-  const snap = await fb.getDocs(q);
-  let total = 0, paid = 0, pending = 0;
-  const rows = [];
-  snap.forEach(d => {
-    const r = { id: d.id, ...d.data() };
-    if (r.status === 'completed') { total += r.priceFixed||0; paid++; }
-    if (r.status === 'confirmed') { pending += r.priceFixed||0; }
-    rows.push(r);
-  });
-  document.getElementById('f-total').textContent = 'R$ ' + total.toLocaleString('pt-BR');
-  document.getElementById('f-paid').textContent = paid;
-  document.getElementById('f-ticket').textContent = paid > 0 ? 'R$ ' + Math.round(total/paid) : 'R$ 0';
-  document.getElementById('f-pending').textContent = 'R$ ' + pending.toLocaleString('pt-BR');
-
-  const tx = document.getElementById('f-transactions');
-  if (rows.length === 0) { tx.innerHTML = '<div style="color:var(--text3);">Nenhuma transação ainda.</div>'; return; }
-  tx.innerHTML = '';
-  rows.slice(0,10).forEach(r => {
-    const dt = r.scheduledAt?.toDate ? r.scheduledAt.toDate() : new Date(r.scheduledAt);
-    const dtStr = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
-    const color = r.status === 'completed' ? 'var(--green)' : r.status === 'cancelled' ? 'var(--red)' : 'var(--text3)';
-    const prefix = r.status === 'completed' ? '+' : r.status === 'cancelled' ? '✕' : '~';
-    tx.insertAdjacentHTML('beforeend', `
-      <div class="ride-item">
-        <div class="ride-dot" style="background:${color}"></div>
-        <div class="ride-info">
-          <div class="ride-route">${r.passengerName||'?'} · ${r.origin||''} → ${r.destination||''}</div>
-          <div class="ride-meta">${dtStr} · ${r.paymentMethod||'—'}</div>
-        </div>
-        <div style="font-size:14px;color:${color};">${prefix} R$ ${r.priceFixed||0}</div>
-      </div>`);
-  });
+async function loadFinancial(){
+  if(_user.role!=='driver')return;
+  const fb=window._fb,q=fb.query(fb.collection(fb.db,'rides'),fb.where('driverId','==',_user.uid)),snap=await fb.getDocs(q);
+  let total=0,paid=0,pending=0,rows=[];
+  snap.forEach(d=>{const r={id:d.id,...d.data()};if(r.status==='completed'){total+=r.priceFixed||0;paid++;}if(r.status==='confirmed')pending+=r.priceFixed||0;rows.push(r);});
+  document.getElementById('f-total').textContent='R$ '+total.toLocaleString('pt-BR');
+  document.getElementById('f-paid').textContent=paid;
+  document.getElementById('f-ticket').textContent=paid>0?'R$ '+Math.round(total/paid):'R$ 0';
+  document.getElementById('f-pending').textContent='R$ '+pending.toLocaleString('pt-BR');
+  const tx=document.getElementById('f-transactions');
+  if(rows.length===0){tx.innerHTML='<div style="color:var(--text3);">Nenhuma transação ainda.</div>';return;}
+  tx.innerHTML='';
+  rows.slice(0,10).forEach(r=>{const dt=r.scheduledAt?.toDate?r.scheduledAt.toDate():new Date(r.scheduledAt),ds=dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}),color=r.status==='completed'?'var(--green)':r.status==='cancelled'?'var(--red)':'var(--text3)',prefix=r.status==='completed'?'+':r.status==='cancelled'?'✕':'~';tx.insertAdjacentHTML('beforeend',`<div class="ride-item"><div class="ride-dot" style="background:${color}"></div><div class="ride-info"><div class="ride-route">${r.passengerName||'?'} · ${r.origin||''} → ${r.destination||''}</div><div class="ride-meta">${ds} · ${r.paymentMethod||'—'}</div></div><div style="font-size:14px;color:${color};">${prefix} R$ ${r.priceFixed||0}</div></div>`);});
 }
 
-// ── PROFILE SAVE ──
-async function saveProfile() {
-  const fb = window._fb;
-  const name = document.getElementById('pp-name').value.trim();
-  const phone = document.getElementById('pp-phone').value.trim();
-  await fb.updateDoc(fb.doc(fb.db,'users',_user.uid), { name, phone });
-  _user.name = name; _user.phone = phone;
-  document.getElementById('topbar-name').textContent = name;
-  toast('✓ Perfil salvo!', 'success');
+async function saveProfile(){const fb=window._fb,name=document.getElementById('pp-name').value.trim(),phone=document.getElementById('pp-phone').value.trim();await fb.updateDoc(fb.doc(fb.db,'users',_user.uid),{name,phone});_user.name=name;_user.phone=phone;document.getElementById('topbar-name').textContent=name;toast('✓ Perfil salvo!','success');}
+async function saveDriverProfile(){const fb=window._fb,name=document.getElementById('dp-name').value.trim(),car=document.getElementById('dp-car').value.trim(),plate=document.getElementById('dp-plate').value.trim(),bio=document.getElementById('dp-bio').value.trim();await fb.updateDoc(fb.doc(fb.db,'users',_user.uid),{name,car,plate,bio});_user.name=name;_user.car=car;_user.plate=plate;_user.bio=bio;document.getElementById('topbar-name').textContent=name;toast('✓ Perfil salvo!','success');}
+
+function updatePrice(){document.getElementById('price-show').textContent='R$ '+document.getElementById('s-type').value;}
+function selPay(m,el){_selectedPayMethod=m;document.querySelectorAll('.pay-opt').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');}
+
+const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DAYS=['D','S','T','Q','Q','S','S'];
+
+function buildCalendar(gridId,titleId){
+  const grid=document.getElementById(gridId),title=document.getElementById(titleId);if(!grid)return;
+  if(title)title.textContent=MONTHS[_calMonth]+' '+_calYear;
+  const today=new Date(),firstDay=new Date(_calYear,_calMonth,1).getDay(),daysInMonth=new Date(_calYear,_calMonth+1,0).getDate();
+  let html=DAYS.map(d=>`<div class="cal-day-label">${d}</div>`).join('');
+  const prevDays=new Date(_calYear,_calMonth,0).getDate();
+  for(let i=0;i<firstDay;i++)html+=`<div class="cal-day other">${prevDays-firstDay+1+i}</div>`;
+  for(let d=1;d<=daysInMonth;d++){const isToday=d===today.getDate()&&_calMonth===today.getMonth()&&_calYear===today.getFullYear(),isSel=_selectedDate?.d===d&&_selectedDate?.m===_calMonth&&_selectedDate?.y===_calYear,cls=['cal-day',isToday?'today':'',isSel?'sel':''].filter(Boolean).join(' ');html+=`<div class="${cls}" onclick="selectCalDay(${d},this,'${gridId}','${titleId}')">${d}</div>`;}
+  grid.innerHTML=html;
 }
 
-async function saveDriverProfile() {
-  const fb = window._fb;
-  const name = document.getElementById('dp-name').value.trim();
-  const car = document.getElementById('dp-car').value.trim();
-  const plate = document.getElementById('dp-plate').value.trim();
-  const bio = document.getElementById('dp-bio').value.trim();
-  await fb.updateDoc(fb.doc(fb.db,'users',_user.uid), { name, car, plate, bio });
-  _user.name = name; _user.car = car; _user.plate = plate; _user.bio = bio;
-  document.getElementById('topbar-name').textContent = name;
-  toast('✓ Perfil salvo!', 'success');
-}
+function changeMonth(dir){_calMonth+=dir;if(_calMonth>11){_calMonth=0;_calYear++;}if(_calMonth<0){_calMonth=11;_calYear--;}buildCalendar('cal-grid','cal-title');buildCalendar('d-cal-grid','d-cal-title');}
 
-// ── SCHEDULE HELPERS ──
-function updatePrice() {
-  const sel = document.getElementById('s-type');
-  document.getElementById('price-show').textContent = 'R$ ' + sel.value;
-}
-function selPay(m, el) {
-  _selectedPayMethod = m;
-  document.querySelectorAll('.pay-opt').forEach(e => e.classList.remove('sel'));
-  el.classList.add('sel');
-}
-
-// ── CALENDAR ──
-const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const DAYS = ['D','S','T','Q','Q','S','S'];
-
-function buildCalendar(gridId, titleId) {
-  const grid = document.getElementById(gridId);
-  const title = document.getElementById(titleId);
-  if (!grid) return;
-  if (title) title.textContent = MONTHS[_calMonth] + ' ' + _calYear;
-
-  const today = new Date();
-  const firstDay = new Date(_calYear, _calMonth, 1).getDay();
-  const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
-
-  let html = DAYS.map(d => `<div class="cal-day-label">${d}</div>`).join('');
-  const prevDays = new Date(_calYear, _calMonth, 0).getDate();
-  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day other">${prevDays - firstDay + 1 + i}</div>`;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const isToday = d === today.getDate() && _calMonth === today.getMonth() && _calYear === today.getFullYear();
-    const isSel = _selectedDate?.d === d && _selectedDate?.m === _calMonth && _selectedDate?.y === _calYear;
-    const cls = ['cal-day', isToday?'today':'', isSel?'sel':''].filter(Boolean).join(' ');
-    html += `<div class="${cls}" onclick="selectCalDay(${d},this,'${gridId}','${titleId}')">${d}</div>`;
-  }
-  grid.innerHTML = html;
-}
-
-function changeMonth(dir) {
-  _calMonth += dir;
-  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
-  if (_calMonth < 0) { _calMonth = 11; _calYear--; }
-  buildCalendar('cal-grid','cal-title');
-  buildCalendar('d-cal-grid','d-cal-title');
-}
-
-function selectCalDay(d, el, gridId, titleId) {
-  _selectedDate = { d, m: _calMonth, y: _calYear };
-  const grid = document.getElementById(gridId);
-  grid.querySelectorAll('.cal-day').forEach(c => c.classList.remove('sel'));
-  el.classList.add('sel');
-  const label = `${d} de ${MONTHS[_calMonth]}`;
-  const tsLabel = document.getElementById('ts-date-label');
-  if (tsLabel) tsLabel.textContent = label;
+function selectCalDay(d,el,gridId,titleId){
+  _selectedDate={d,m:_calMonth,y:_calYear};
+  document.getElementById(gridId).querySelectorAll('.cal-day').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');
+  const tsLabel=document.getElementById('ts-date-label');if(tsLabel)tsLabel.textContent=`${d} de ${MONTHS[_calMonth]}`;
   buildTimeSlots();
 }
 
-function buildTimeSlots() {
-  const container = document.getElementById('time-slots');
-  if (!container) return;
-  const hours = ['07h00','08h30','10h00','12h00','14h00','16h00','18h00','20h00'];
-  const occ = [0, 2];
-  container.innerHTML = hours.map((h,i) => {
-    const isOcc = occ.includes(i);
-    return `<div class="ts${isOcc?' occ':''}" onclick="${isOcc?'':'selectTs(this)'}">
-      <div class="ts-hour">${h}</div>
-      <div class="ts-bar${isOcc?' fill':''}"></div>
-      <div class="ts-lbl">${isOcc?'Ocupado':'Disponível'}</div>
-    </div>`;
-  }).join('');
+function buildTimeSlots(){
+  const container=document.getElementById('time-slots');if(!container)return;
+  const hours=['07h00','08h30','10h00','12h00','14h00','16h00','18h00','20h00'],occ=[0,2];
+  container.innerHTML=hours.map((h,i)=>{const isOcc=occ.includes(i);return`<div class="ts${isOcc?' occ':''}" onclick="${isOcc?'':'selectTs(this)'}"><div class="ts-hour">${h}</div><div class="ts-bar${isOcc?' fill':''}"></div><div class="ts-lbl">${isOcc?'Ocupado':'Disponível'}</div></div>`;}).join('');
 }
 
-function selectTs(el) {
-  document.querySelectorAll('.ts').forEach(t => t.classList.remove('sel'));
-  el.classList.add('sel');
-  const hour = el.querySelector('.ts-hour').textContent;
-  const ti = document.getElementById('s-time');
-  if (ti) ti.value = hour.replace('h',':');
-}
-
-// ── UTILS ──
-function initials(name) {
-  if (!name) return '?';
-  return name.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
-}
-
-function toast(msg, type='') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show ' + type;
-  clearTimeout(t._to);
-  t._to = setTimeout(() => t.classList.remove('show'), 3000);
-}
+function selectTs(el){document.querySelectorAll('.ts').forEach(t=>t.classList.remove('sel'));el.classList.add('sel');const ti=document.getElementById('s-time');if(ti)ti.value=el.querySelector('.ts-hour').textContent.replace('h',':');}
+function initials(name){if(!name)return'?';return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),3000);}
 </script>
 </body>
 </html>
