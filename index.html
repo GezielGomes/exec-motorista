@@ -8,7 +8,7 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, getDocs, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -26,7 +26,7 @@ const db = getFirestore(app);
 
 window._auth = auth;
 window._db = db;
-window._fns = { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, getDocs, where };
+window._fns = { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, getDocs, where };
 window._fb = { auth, db, ...window._fns };
 window._fbReady = true;
 window.ADMIN_EMAIL = 'geziel.gomes30@gmail.com';
@@ -93,6 +93,8 @@ onAuthStateChanged(auth, async (user) => {
   .btn-primary{width:100%;padding:12px;border-radius:var(--radius-sm);background:var(--gold);color:#080809;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;border:none;cursor:pointer;transition:background 0.15s;letter-spacing:0.03em;margin-top:4px;}
   .btn-primary:hover{background:var(--gold2);}
   .btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+  .forgot-link{font-size:12px;color:var(--text3);text-decoration:none;transition:color .15s;}
+  .forgot-link:hover{color:var(--gold);}
   .auth-error{background:var(--red-dim);border:1px solid rgba(224,82,82,0.2);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;display:none;}
   .auth-error.show{display:block;}
 
@@ -302,6 +304,9 @@ onAuthStateChanged(auth, async (user) => {
       <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="l-email" type="email" placeholder="seu@email.com" autocomplete="email"></div>
       <div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
+      <div style="text-align:center;margin-top:14px;">
+        <a href="#" class="forgot-link" onclick="doForgot();return false;">Esqueceu a senha?</a>
+      </div>
     </div>
     <div id="tab-register" style="display:none;">
       <div class="form-group">
@@ -608,6 +613,17 @@ async function doLogin(){
   const btn=document.getElementById('btn-login');btn.disabled=true;btn.textContent='Entrando...';
   try{await window._fns.signInWithEmailAndPassword(window._auth,email,pass);}
   catch(e){showAuthError(authMsg(e.code));btn.disabled=false;btn.textContent='Entrar';}
+}
+
+// ── RECUPERAR SENHA ──
+async function doForgot(){
+  clearAuthError();
+  const email=document.getElementById('l-email').value.trim();
+  if(!email){showAuthError('Digite seu e-mail acima para recuperar a senha.');return;}
+  try{
+    await window._fns.sendPasswordResetEmail(window._auth,email);
+    toast('✓ Se o e-mail existir, enviamos o link de redefinição.','success');
+  }catch(e){showAuthError(authMsg(e.code));}
 }
 
 async function doRegister(){
