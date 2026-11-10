@@ -29,7 +29,7 @@ window._db = db;
 window._fns = { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, getDocs, where };
 window._fb = { auth, db, ...window._fns };
 window._fbReady = true;
-window.ADMIN_EMAIL = 'geziel.gomes30@gmail.com';
+window.ADMIN_EMAIL = 'loftsleben@gmail.com';
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
@@ -547,9 +547,31 @@ let _selectedDate=null,_autoReplyOn=false;
 let _currentDriverContact=null,_driverInfo=null;
 let _appReady=false;
 
+// ── MODO SEM LOGIN (temporário) ──
+// Para voltar ao login normal, troque DISABLE_LOGIN para false.
+const DISABLE_LOGIN = true;
+const DEV_ROLE = 'admin'; // 'admin' | 'driver' | 'passenger'
+
+function startWithoutLogin(){
+  _appReady = true;
+  hideLoading();
+  _user = {
+    uid: 'dev-' + DEV_ROLE,
+    name: 'Teste',
+    email: DEV_ROLE === 'admin' ? ADMIN_EMAIL : 'dev@local',
+    role: DEV_ROLE,
+    approvalStatus: 'approved',
+    autoReply: false
+  };
+  if (DEV_ROLE === 'admin') enterAdmin(); else enterApp();
+  const lo = document.querySelector('.btn-logout');
+  if (lo) lo.style.display = 'none';
+}
+
 function hideLoading(){const el=document.getElementById('loading');if(!el)return;el.classList.add('hide');setTimeout(()=>el.style.display='none',350);}
 
 window.addEventListener('authStateChanged',(e)=>{
+  if(DISABLE_LOGIN) return;
   if(_appReady){
     if(e.detail&&!_user){_user=e.detail;routeUser();}
     else if(!e.detail&&_user){_user=null;showScreen('auth');}
@@ -560,13 +582,14 @@ window.addEventListener('authStateChanged',(e)=>{
   else showScreen('auth');
 });
 
-setTimeout(()=>{if(!_appReady){_appReady=true;hideLoading();showScreen('auth');}},8000);
+setTimeout(()=>{if(!_appReady&&!DISABLE_LOGIN){_appReady=true;hideLoading();showScreen('auth');}},8000);
 
 window.addEventListener('load',()=>{
   const si=document.getElementById('s-date');
   if(si)si.value=new Date().toISOString().split('T')[0];
   buildCalendar('cal-grid','cal-title');
   buildCalendar('d-cal-grid','d-cal-title');
+  if(DISABLE_LOGIN) startWithoutLogin();
 });
 
 // ── ROUTE USER based on role and status ──
